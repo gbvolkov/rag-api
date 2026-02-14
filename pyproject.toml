@@ -1,0 +1,52 @@
+[project]
+name = "kbman-svc"
+version = "0.1.0"
+description = "KBMan Service V1 over rag-lib"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn>=0.32.0",
+  "pydantic>=2.10.0",
+  "pydantic-settings>=2.7.0",
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.14.0",
+  "psycopg[binary]>=3.2.3",
+  "celery[redis]>=5.4.0",
+  "redis>=5.2.0",
+  "minio>=7.2.10",
+  "qdrant-client>=1.12.1",
+  "python-multipart>=0.0.17",
+  "orjson>=3.10.11",
+  "filelock>=3.16.1",
+  "httpx>=0.28.0",
+  "python-dotenv>=1.0.1",
+  "langchain-core>=0.3.20",
+  "langchain-community>=0.3.9",
+  "rag-lib @ git+https://github.com/gbvolkov/rag-lib.git",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.3",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=6.0.0",
+  "aiosqlite>=0.20.0",
+]
+
+[project.scripts]
+kbman-svc = "app.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

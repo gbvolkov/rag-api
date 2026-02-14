@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Project Specific
+docs/
+chroma_db/
+results/
+storage/
+*.log
+semantic_debug.log
+semantic_debug_utf8.log
+test_output.log
+live_error.log
+
+# IDE
+.vscode/
+.idea/
+
+# Virtual environments
+.venv
+
+# Local test/runtime artifacts
+.test_artifacts*/
+test.db
+test.db-journal
+pytest-cache-files-*/
+artifacts/

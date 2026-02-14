@@ -1,0 +1,5587 @@
+{
+  "dataset": "kbman_long_fixture",
+  "version": 1,
+  "notes": "Large nested JSON payload for integration and chunking tests.",
+  "items": [
+    {
+      "id": 1,
+      "title": "Incident Report 1",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 1: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 11,
+        "failed_tasks": 1,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-02"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-02"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-02"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Incident Report 2",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 2: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 12,
+        "failed_tasks": 2,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-03"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-03"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Incident Report 3",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 3: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 13,
+        "failed_tasks": 3,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-04"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-04"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-04"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Incident Report 4",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 4: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 14,
+        "failed_tasks": 4,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-05"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-05"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Incident Report 5",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 5: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 15,
+        "failed_tasks": 5,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-06"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-06"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-06"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Incident Report 6",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 6: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 16,
+        "failed_tasks": 6,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-07"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-07"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Incident Report 7",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 7: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 17,
+        "failed_tasks": 7,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-08"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-08"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-08"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Incident Report 8",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 8: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 18,
+        "failed_tasks": 8,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-09"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-09"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-09"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Incident Report 9",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 9: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 19,
+        "failed_tasks": 9,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-10"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-10"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Incident Report 10",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 10: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 20,
+        "failed_tasks": 10,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-11"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-11"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-11"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Incident Report 11",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 11: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 21,
+        "failed_tasks": 11,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-12"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-12"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Incident Report 12",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 12: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 22,
+        "failed_tasks": 12,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-13"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-13"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-13"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Incident Report 13",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 13: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 23,
+        "failed_tasks": 0,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-14"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-14"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-14"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Incident Report 14",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 14: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 24,
+        "failed_tasks": 1,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-15"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-15"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-15"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Incident Report 15",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 15: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 25,
+        "failed_tasks": 2,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-16"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-16"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-16"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Incident Report 16",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 16: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 26,
+        "failed_tasks": 3,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-17"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-17"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-17"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Incident Report 17",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 17: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 27,
+        "failed_tasks": 4,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-18"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-18"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-18"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Incident Report 18",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 18: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 28,
+        "failed_tasks": 5,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-19"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-19"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-19"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Incident Report 19",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 19: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 29,
+        "failed_tasks": 6,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-20"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-20"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-20"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Incident Report 20",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 20: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 30,
+        "failed_tasks": 7,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-21"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-21"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-21"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Incident Report 21",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 21: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 31,
+        "failed_tasks": 8,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-22"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-22"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-22"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Incident Report 22",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 22: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 32,
+        "failed_tasks": 9,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-23"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-23"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-23"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Incident Report 23",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 23: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 33,
+        "failed_tasks": 10,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-24"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-24"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-24"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Incident Report 24",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 24: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 34,
+        "failed_tasks": 11,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-25"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-25"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-25"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Incident Report 25",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 25: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 35,
+        "failed_tasks": 12,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-26"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-26"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-26"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Incident Report 26",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 26: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 36,
+        "failed_tasks": 0,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-27"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-27"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-27"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Incident Report 27",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 27: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 37,
+        "failed_tasks": 1,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-28"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-28"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-28"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Incident Report 28",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 28: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 38,
+        "failed_tasks": 2,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-01"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-01"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-01"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "title": "Incident Report 29",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 29: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 39,
+        "failed_tasks": 3,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-02"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-02"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-02"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "Incident Report 30",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 30: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 40,
+        "failed_tasks": 4,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-03"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-03"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "title": "Incident Report 31",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 31: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 41,
+        "failed_tasks": 5,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-04"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-04"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-04"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "Incident Report 32",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 32: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 42,
+        "failed_tasks": 6,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-05"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-05"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "title": "Incident Report 33",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 33: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 43,
+        "failed_tasks": 7,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-06"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-06"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-06"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "Incident Report 34",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 34: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 44,
+        "failed_tasks": 8,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-07"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-07"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "title": "Incident Report 35",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 35: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 45,
+        "failed_tasks": 9,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-08"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-08"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-08"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "Incident Report 36",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 36: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 46,
+        "failed_tasks": 10,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-09"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-09"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-09"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "Incident Report 37",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 37: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 47,
+        "failed_tasks": 11,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-10"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-10"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "title": "Incident Report 38",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 38: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 48,
+        "failed_tasks": 12,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-11"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-11"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-11"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "title": "Incident Report 39",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 39: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 49,
+        "failed_tasks": 0,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-12"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-12"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Incident Report 40",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 40: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 50,
+        "failed_tasks": 1,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-13"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-13"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-13"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "title": "Incident Report 41",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 41: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 51,
+        "failed_tasks": 2,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-14"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-14"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-14"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "title": "Incident Report 42",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 42: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 52,
+        "failed_tasks": 3,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-15"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-15"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-15"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "title": "Incident Report 43",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 43: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 53,
+        "failed_tasks": 4,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-16"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-16"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-16"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "title": "Incident Report 44",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 44: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 54,
+        "failed_tasks": 5,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-17"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-17"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-17"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "title": "Incident Report 45",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 45: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 55,
+        "failed_tasks": 6,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-18"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-18"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-18"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "title": "Incident Report 46",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 46: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 56,
+        "failed_tasks": 7,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-19"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-19"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-19"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "title": "Incident Report 47",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 47: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 57,
+        "failed_tasks": 8,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-20"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-20"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-20"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "title": "Incident Report 48",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 48: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 58,
+        "failed_tasks": 9,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-21"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-21"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-21"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "title": "Incident Report 49",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 49: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 59,
+        "failed_tasks": 10,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-22"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-22"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-22"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "title": "Incident Report 50",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 50: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 60,
+        "failed_tasks": 11,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-23"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-23"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-23"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "title": "Incident Report 51",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 51: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 61,
+        "failed_tasks": 12,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-24"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-24"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-24"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "title": "Incident Report 52",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 52: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 62,
+        "failed_tasks": 0,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-25"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-25"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-25"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "title": "Incident Report 53",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 53: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 63,
+        "failed_tasks": 1,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-26"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-26"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-26"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "title": "Incident Report 54",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 54: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 64,
+        "failed_tasks": 2,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-27"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-27"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-27"
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "title": "Incident Report 55",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 55: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 65,
+        "failed_tasks": 3,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-28"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-28"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-28"
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "title": "Incident Report 56",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 56: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 66,
+        "failed_tasks": 4,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-01"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-01"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-01"
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "title": "Incident Report 57",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 57: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 67,
+        "failed_tasks": 5,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-02"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-02"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-02"
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "title": "Incident Report 58",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 58: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 68,
+        "failed_tasks": 6,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-03"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-03"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "title": "Incident Report 59",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 59: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 69,
+        "failed_tasks": 7,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-04"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-04"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-04"
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "title": "Incident Report 60",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 60: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 70,
+        "failed_tasks": 8,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-05"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-05"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "title": "Incident Report 61",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 61: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 71,
+        "failed_tasks": 9,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-06"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-06"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-06"
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "title": "Incident Report 62",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 62: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 72,
+        "failed_tasks": 10,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-07"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-07"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "title": "Incident Report 63",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 63: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 73,
+        "failed_tasks": 11,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-08"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-08"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-08"
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "title": "Incident Report 64",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 64: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 74,
+        "failed_tasks": 12,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-09"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-09"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-09"
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "title": "Incident Report 65",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 65: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 75,
+        "failed_tasks": 0,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-10"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-10"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "title": "Incident Report 66",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 66: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 76,
+        "failed_tasks": 1,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-11"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-11"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-11"
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "title": "Incident Report 67",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 67: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 77,
+        "failed_tasks": 2,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-12"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-12"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "id": 68,
+      "title": "Incident Report 68",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 68: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 78,
+        "failed_tasks": 3,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-13"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-13"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-13"
+        }
+      ]
+    },
+    {
+      "id": 69,
+      "title": "Incident Report 69",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 69: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 79,
+        "failed_tasks": 4,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-14"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-14"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-14"
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "title": "Incident Report 70",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 70: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 80,
+        "failed_tasks": 5,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-15"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-15"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-15"
+        }
+      ]
+    },
+    {
+      "id": 71,
+      "title": "Incident Report 71",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 71: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 81,
+        "failed_tasks": 6,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-16"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-16"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-16"
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "title": "Incident Report 72",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 72: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 82,
+        "failed_tasks": 7,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-17"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-17"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-17"
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "title": "Incident Report 73",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 73: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 83,
+        "failed_tasks": 8,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-18"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-18"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-18"
+        }
+      ]
+    },
+    {
+      "id": 74,
+      "title": "Incident Report 74",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 74: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 84,
+        "failed_tasks": 9,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-19"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-19"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-19"
+        }
+      ]
+    },
+    {
+      "id": 75,
+      "title": "Incident Report 75",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 75: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 85,
+        "failed_tasks": 10,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-20"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-20"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-20"
+        }
+      ]
+    },
+    {
+      "id": 76,
+      "title": "Incident Report 76",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 76: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 86,
+        "failed_tasks": 11,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-21"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-21"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-21"
+        }
+      ]
+    },
+    {
+      "id": 77,
+      "title": "Incident Report 77",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 77: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 87,
+        "failed_tasks": 12,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-22"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-22"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-22"
+        }
+      ]
+    },
+    {
+      "id": 78,
+      "title": "Incident Report 78",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 78: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 88,
+        "failed_tasks": 0,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-23"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-23"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-23"
+        }
+      ]
+    },
+    {
+      "id": 79,
+      "title": "Incident Report 79",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 79: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 89,
+        "failed_tasks": 1,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-24"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-24"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-24"
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "title": "Incident Report 80",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 80: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 90,
+        "failed_tasks": 2,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-25"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-25"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-25"
+        }
+      ]
+    },
+    {
+      "id": 81,
+      "title": "Incident Report 81",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 81: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 91,
+        "failed_tasks": 3,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-26"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-26"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-26"
+        }
+      ]
+    },
+    {
+      "id": 82,
+      "title": "Incident Report 82",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 82: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 92,
+        "failed_tasks": 4,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-27"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-27"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-27"
+        }
+      ]
+    },
+    {
+      "id": 83,
+      "title": "Incident Report 83",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 83: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 93,
+        "failed_tasks": 5,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-28"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-28"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-28"
+        }
+      ]
+    },
+    {
+      "id": 84,
+      "title": "Incident Report 84",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 84: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 94,
+        "failed_tasks": 6,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-01"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-01"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-01"
+        }
+      ]
+    },
+    {
+      "id": 85,
+      "title": "Incident Report 85",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 85: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 95,
+        "failed_tasks": 7,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-02"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-02"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-02"
+        }
+      ]
+    },
+    {
+      "id": 86,
+      "title": "Incident Report 86",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 86: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 96,
+        "failed_tasks": 8,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-03"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-03"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "id": 87,
+      "title": "Incident Report 87",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 87: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 97,
+        "failed_tasks": 9,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-04"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-04"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-04"
+        }
+      ]
+    },
+    {
+      "id": 88,
+      "title": "Incident Report 88",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 88: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 98,
+        "failed_tasks": 10,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-05"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-05"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "id": 89,
+      "title": "Incident Report 89",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 89: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 99,
+        "failed_tasks": 11,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-06"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-06"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-06"
+        }
+      ]
+    },
+    {
+      "id": 90,
+      "title": "Incident Report 90",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 90: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 10,
+        "failed_tasks": 12,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-07"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-07"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "id": 91,
+      "title": "Incident Report 91",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 91: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 11,
+        "failed_tasks": 0,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-08"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-08"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-08"
+        }
+      ]
+    },
+    {
+      "id": 92,
+      "title": "Incident Report 92",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 92: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 12,
+        "failed_tasks": 1,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-09"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-09"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-09"
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "title": "Incident Report 93",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 93: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 13,
+        "failed_tasks": 2,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-10"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-10"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "title": "Incident Report 94",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 94: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 14,
+        "failed_tasks": 3,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-11"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-11"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-11"
+        }
+      ]
+    },
+    {
+      "id": 95,
+      "title": "Incident Report 95",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 95: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 15,
+        "failed_tasks": 4,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-12"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-12"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "id": 96,
+      "title": "Incident Report 96",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 96: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 16,
+        "failed_tasks": 5,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-13"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-13"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-13"
+        }
+      ]
+    },
+    {
+      "id": 97,
+      "title": "Incident Report 97",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 97: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 17,
+        "failed_tasks": 6,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-14"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-14"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-14"
+        }
+      ]
+    },
+    {
+      "id": 98,
+      "title": "Incident Report 98",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 98: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 18,
+        "failed_tasks": 7,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-15"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-15"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-15"
+        }
+      ]
+    },
+    {
+      "id": 99,
+      "title": "Incident Report 99",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 99: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 19,
+        "failed_tasks": 8,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-16"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-16"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-16"
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "title": "Incident Report 100",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 100: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 20,
+        "failed_tasks": 9,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-17"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-17"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-17"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "title": "Incident Report 101",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 101: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 21,
+        "failed_tasks": 10,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-18"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-18"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-18"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "title": "Incident Report 102",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 102: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 22,
+        "failed_tasks": 11,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-19"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-19"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-19"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "title": "Incident Report 103",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 103: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 23,
+        "failed_tasks": 12,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-20"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-20"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-20"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "title": "Incident Report 104",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 104: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 24,
+        "failed_tasks": 0,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-21"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-21"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-21"
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "title": "Incident Report 105",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 105: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 25,
+        "failed_tasks": 1,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-22"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-22"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-22"
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "title": "Incident Report 106",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 106: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 26,
+        "failed_tasks": 2,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-23"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-23"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-23"
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "title": "Incident Report 107",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 107: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 27,
+        "failed_tasks": 3,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-24"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-24"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-24"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "title": "Incident Report 108",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 108: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 28,
+        "failed_tasks": 4,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-25"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-25"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-25"
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "title": "Incident Report 109",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 109: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 29,
+        "failed_tasks": 5,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-26"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-26"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-26"
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "title": "Incident Report 110",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 110: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 30,
+        "failed_tasks": 6,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-27"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-27"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-27"
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "title": "Incident Report 111",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 111: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 31,
+        "failed_tasks": 7,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-28"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-28"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-28"
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "title": "Incident Report 112",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 112: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 32,
+        "failed_tasks": 8,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-01"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-01"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-01"
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "title": "Incident Report 113",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 113: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 33,
+        "failed_tasks": 9,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-02"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-02"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-02"
+        }
+      ]
+    },
+    {
+      "id": 114,
+      "title": "Incident Report 114",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 114: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 34,
+        "failed_tasks": 10,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-03"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-03"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "title": "Incident Report 115",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 115: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 35,
+        "failed_tasks": 11,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-04"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-04"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-04"
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "title": "Incident Report 116",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 116: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 36,
+        "failed_tasks": 12,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-05"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-05"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "id": 117,
+      "title": "Incident Report 117",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 117: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 37,
+        "failed_tasks": 0,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-06"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-06"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-06"
+        }
+      ]
+    },
+    {
+      "id": 118,
+      "title": "Incident Report 118",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 118: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 38,
+        "failed_tasks": 1,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-07"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-07"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "id": 119,
+      "title": "Incident Report 119",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 119: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 39,
+        "failed_tasks": 2,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-08"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-08"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-08"
+        }
+      ]
+    },
+    {
+      "id": 120,
+      "title": "Incident Report 120",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 120: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 40,
+        "failed_tasks": 3,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-09"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-09"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-09"
+        }
+      ]
+    },
+    {
+      "id": 121,
+      "title": "Incident Report 121",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 121: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 41,
+        "failed_tasks": 4,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-10"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-10"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "id": 122,
+      "title": "Incident Report 122",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 122: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 42,
+        "failed_tasks": 5,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-11"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-11"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-11"
+        }
+      ]
+    },
+    {
+      "id": 123,
+      "title": "Incident Report 123",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 123: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 43,
+        "failed_tasks": 6,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-12"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-12"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "id": 124,
+      "title": "Incident Report 124",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 124: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 44,
+        "failed_tasks": 7,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-13"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-13"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-13"
+        }
+      ]
+    },
+    {
+      "id": 125,
+      "title": "Incident Report 125",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 125: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 45,
+        "failed_tasks": 8,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-14"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-14"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-14"
+        }
+      ]
+    },
+    {
+      "id": 126,
+      "title": "Incident Report 126",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 126: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 46,
+        "failed_tasks": 9,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-15"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-15"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-15"
+        }
+      ]
+    },
+    {
+      "id": 127,
+      "title": "Incident Report 127",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 127: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 47,
+        "failed_tasks": 10,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-16"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-16"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-16"
+        }
+      ]
+    },
+    {
+      "id": 128,
+      "title": "Incident Report 128",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 128: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 48,
+        "failed_tasks": 11,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-17"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-17"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-17"
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "title": "Incident Report 129",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 129: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 49,
+        "failed_tasks": 12,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-18"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-18"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-18"
+        }
+      ]
+    },
+    {
+      "id": 130,
+      "title": "Incident Report 130",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 130: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 50,
+        "failed_tasks": 0,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-19"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-19"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-19"
+        }
+      ]
+    },
+    {
+      "id": 131,
+      "title": "Incident Report 131",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 131: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 51,
+        "failed_tasks": 1,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-20"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-20"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-20"
+        }
+      ]
+    },
+    {
+      "id": 132,
+      "title": "Incident Report 132",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 132: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 52,
+        "failed_tasks": 2,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-21"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-21"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-21"
+        }
+      ]
+    },
+    {
+      "id": 133,
+      "title": "Incident Report 133",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 133: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 53,
+        "failed_tasks": 3,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-22"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-22"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-22"
+        }
+      ]
+    },
+    {
+      "id": 134,
+      "title": "Incident Report 134",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 134: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 54,
+        "failed_tasks": 4,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-23"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-23"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-23"
+        }
+      ]
+    },
+    {
+      "id": 135,
+      "title": "Incident Report 135",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 135: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 55,
+        "failed_tasks": 5,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-24"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-24"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-24"
+        }
+      ]
+    },
+    {
+      "id": 136,
+      "title": "Incident Report 136",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 136: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 56,
+        "failed_tasks": 6,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-25"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-25"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-25"
+        }
+      ]
+    },
+    {
+      "id": 137,
+      "title": "Incident Report 137",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 137: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 57,
+        "failed_tasks": 7,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-26"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-26"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-26"
+        }
+      ]
+    },
+    {
+      "id": 138,
+      "title": "Incident Report 138",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 138: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 58,
+        "failed_tasks": 8,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-27"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-27"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-27"
+        }
+      ]
+    },
+    {
+      "id": 139,
+      "title": "Incident Report 139",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 139: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 59,
+        "failed_tasks": 9,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-28"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-28"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-28"
+        }
+      ]
+    },
+    {
+      "id": 140,
+      "title": "Incident Report 140",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 140: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 60,
+        "failed_tasks": 10,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-01"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-01"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-01"
+        }
+      ]
+    },
+    {
+      "id": 141,
+      "title": "Incident Report 141",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 141: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 61,
+        "failed_tasks": 11,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-02"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-02"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-02"
+        }
+      ]
+    },
+    {
+      "id": 142,
+      "title": "Incident Report 142",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 142: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 62,
+        "failed_tasks": 12,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-03"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-03"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "id": 143,
+      "title": "Incident Report 143",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 143: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 63,
+        "failed_tasks": 0,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-04"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-04"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-04"
+        }
+      ]
+    },
+    {
+      "id": 144,
+      "title": "Incident Report 144",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 144: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 64,
+        "failed_tasks": 1,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-05"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-05"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "id": 145,
+      "title": "Incident Report 145",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 145: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 65,
+        "failed_tasks": 2,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-06"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-06"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-06"
+        }
+      ]
+    },
+    {
+      "id": 146,
+      "title": "Incident Report 146",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 146: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 66,
+        "failed_tasks": 3,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-07"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-07"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "id": 147,
+      "title": "Incident Report 147",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 147: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 67,
+        "failed_tasks": 4,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-08"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-08"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-08"
+        }
+      ]
+    },
+    {
+      "id": 148,
+      "title": "Incident Report 148",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 148: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 68,
+        "failed_tasks": 5,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-09"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-09"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-09"
+        }
+      ]
+    },
+    {
+      "id": 149,
+      "title": "Incident Report 149",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 149: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 69,
+        "failed_tasks": 6,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-10"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-10"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "id": 150,
+      "title": "Incident Report 150",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 150: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 70,
+        "failed_tasks": 7,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-11"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-11"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-11"
+        }
+      ]
+    },
+    {
+      "id": 151,
+      "title": "Incident Report 151",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 151: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 71,
+        "failed_tasks": 8,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-12"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-12"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "id": 152,
+      "title": "Incident Report 152",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 152: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 72,
+        "failed_tasks": 9,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-13"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-13"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-13"
+        }
+      ]
+    },
+    {
+      "id": 153,
+      "title": "Incident Report 153",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 153: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 73,
+        "failed_tasks": 10,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-14"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-14"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-14"
+        }
+      ]
+    },
+    {
+      "id": 154,
+      "title": "Incident Report 154",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 154: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 74,
+        "failed_tasks": 11,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-15"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-15"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-15"
+        }
+      ]
+    },
+    {
+      "id": 155,
+      "title": "Incident Report 155",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 155: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 75,
+        "failed_tasks": 12,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-16"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-16"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-16"
+        }
+      ]
+    },
+    {
+      "id": 156,
+      "title": "Incident Report 156",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 156: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 76,
+        "failed_tasks": 0,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-17"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-17"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-17"
+        }
+      ]
+    },
+    {
+      "id": 157,
+      "title": "Incident Report 157",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 157: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 77,
+        "failed_tasks": 1,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-18"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-18"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-18"
+        }
+      ]
+    },
+    {
+      "id": 158,
+      "title": "Incident Report 158",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 158: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 78,
+        "failed_tasks": 2,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-19"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-19"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-19"
+        }
+      ]
+    },
+    {
+      "id": 159,
+      "title": "Incident Report 159",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 159: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 79,
+        "failed_tasks": 3,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-20"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-20"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-20"
+        }
+      ]
+    },
+    {
+      "id": 160,
+      "title": "Incident Report 160",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 160: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 80,
+        "failed_tasks": 4,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-21"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-21"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-21"
+        }
+      ]
+    },
+    {
+      "id": 161,
+      "title": "Incident Report 161",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 161: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 81,
+        "failed_tasks": 5,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-22"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-22"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-22"
+        }
+      ]
+    },
+    {
+      "id": 162,
+      "title": "Incident Report 162",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 162: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 82,
+        "failed_tasks": 6,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-23"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-23"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-23"
+        }
+      ]
+    },
+    {
+      "id": 163,
+      "title": "Incident Report 163",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 163: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 83,
+        "failed_tasks": 7,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-24"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-24"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-24"
+        }
+      ]
+    },
+    {
+      "id": 164,
+      "title": "Incident Report 164",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 164: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 84,
+        "failed_tasks": 8,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-25"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-25"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-25"
+        }
+      ]
+    },
+    {
+      "id": 165,
+      "title": "Incident Report 165",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 165: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 85,
+        "failed_tasks": 9,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-26"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-26"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-26"
+        }
+      ]
+    },
+    {
+      "id": 166,
+      "title": "Incident Report 166",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 166: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 86,
+        "failed_tasks": 10,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-27"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-27"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-27"
+        }
+      ]
+    },
+    {
+      "id": 167,
+      "title": "Incident Report 167",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 167: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 87,
+        "failed_tasks": 11,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-28"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-28"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-28"
+        }
+      ]
+    },
+    {
+      "id": 168,
+      "title": "Incident Report 168",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 168: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 88,
+        "failed_tasks": 12,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-01"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-01"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-01"
+        }
+      ]
+    },
+    {
+      "id": 169,
+      "title": "Incident Report 169",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 169: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 89,
+        "failed_tasks": 0,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-02"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-02"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-02"
+        }
+      ]
+    },
+    {
+      "id": 170,
+      "title": "Incident Report 170",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 170: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-5",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 90,
+        "failed_tasks": 1,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-03"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-03"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "id": 171,
+      "title": "Incident Report 171",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 171: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-6",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 91,
+        "failed_tasks": 2,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-04"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-04"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-04"
+        }
+      ]
+    },
+    {
+      "id": 172,
+      "title": "Incident Report 172",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 172: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-7",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 92,
+        "failed_tasks": 3,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-05"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-05"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "id": 173,
+      "title": "Incident Report 173",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 173: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-8",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 93,
+        "failed_tasks": 4,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-06"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-06"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-06"
+        }
+      ]
+    },
+    {
+      "id": 174,
+      "title": "Incident Report 174",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 174: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-6",
+        "cluster-9",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 94,
+        "failed_tasks": 5,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-07"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-07"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "id": 175,
+      "title": "Incident Report 175",
+      "category": "retrieval",
+      "priority": "high",
+      "summary": "Section 175: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-0",
+        "cluster-10",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 95,
+        "failed_tasks": 6,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-08"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-08"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-08"
+        }
+      ]
+    },
+    {
+      "id": 176,
+      "title": "Incident Report 176",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 176: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-1",
+        "cluster-0",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 96,
+        "failed_tasks": 7,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-09"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-09"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-09"
+        }
+      ]
+    },
+    {
+      "id": 177,
+      "title": "Incident Report 177",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 177: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-2",
+        "cluster-1",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 97,
+        "failed_tasks": 8,
+        "retries": 1
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-10"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-10"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "id": 178,
+      "title": "Incident Report 178",
+      "category": "operations",
+      "priority": "normal",
+      "summary": "Section 178: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-3",
+        "cluster-2",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 98,
+        "failed_tasks": 9,
+        "retries": 2
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-11"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-11"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-11"
+        }
+      ]
+    },
+    {
+      "id": 179,
+      "title": "Incident Report 179",
+      "category": "retrieval",
+      "priority": "normal",
+      "summary": "Section 179: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-4",
+        "cluster-3",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 99,
+        "failed_tasks": 10,
+        "retries": 3
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-12"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-12"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "id": 180,
+      "title": "Incident Report 180",
+      "category": "operations",
+      "priority": "high",
+      "summary": "Section 180: The knowledge graph subsystem tracks provenance, confidence, and semantic lineage for retrieval-augmented generation workflows. It stores typed entities, relations, and temporal snapshots while supporting replay-safe updates and deterministic ingestion checkpoints for auditability.",
+      "tags": [
+        "tag-5",
+        "cluster-4",
+        "kbman"
+      ],
+      "metrics": {
+        "duration_minutes": 10,
+        "failed_tasks": 11,
+        "retries": 0
+      },
+      "history": [
+        {
+          "event": "created",
+          "at": "2025-09-13"
+        },
+        {
+          "event": "triaged",
+          "at": "2025-10-13"
+        },
+        {
+          "event": "resolved",
+          "at": "2025-11-13"
+        }
+      ]
+    }
+  ]
+}

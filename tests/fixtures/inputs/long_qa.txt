@@ -1,0 +1,359 @@
+Q: How does retrieval policy 1 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 1 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 2 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 2 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 3 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 3 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 4 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 4 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 5 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 5 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 6 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 6 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 7 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 7 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 8 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 8 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 9 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 9 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 10 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 10 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 11 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 11 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 12 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 12 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 13 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 13 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 14 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 14 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 15 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 15 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 16 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 16 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 17 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 17 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 18 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 18 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 19 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 19 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 20 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 20 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 21 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 21 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 22 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 22 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 23 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 23 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 24 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 24 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 25 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 25 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 26 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 26 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 27 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 27 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 28 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 28 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 29 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 29 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 30 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 30 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 31 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 31 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 32 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 32 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 33 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 33 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 34 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 34 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 35 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 35 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 36 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 36 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 37 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 37 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 38 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 38 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 39 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 39 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 40 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 40 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 41 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 41 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 42 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 42 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 43 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 43 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 44 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 44 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 45 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 45 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 46 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 46 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 47 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 47 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 48 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 48 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 49 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 49 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 50 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 50 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 51 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 51 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 52 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 52 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 53 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 53 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 54 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 54 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 55 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 55 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 56 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 56 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 57 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 57 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 58 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 58 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 59 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 59 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 60 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 60 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 61 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 61 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 62 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 62 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 63 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 63 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 64 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 64 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 65 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 65 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 66 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 66 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 67 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 67 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 68 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 68 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 69 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 69 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 70 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 70 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 71 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 71 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 72 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 72 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 73 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 73 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 74 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 74 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 75 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 75 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 76 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 76 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 77 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 77 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 78 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 78 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 79 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 79 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 80 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 80 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 81 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 81 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 82 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 82 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 83 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 83 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 84 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 84 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 85 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 85 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 86 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 86 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 87 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 87 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 88 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 88 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 89 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 89 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 90 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 90 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 91 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 91 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 92 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 92 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 93 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 93 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 94 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 94 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 95 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 95 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 96 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 96 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 97 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 97 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 98 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 98 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 99 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 99 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 100 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 100 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 101 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 101 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 102 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 102 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 103 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 103 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 104 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 104 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 105 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 105 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 106 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 106 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 107 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 107 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 108 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 108 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 109 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 109 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 110 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 110 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 111 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 111 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 112 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 112 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 113 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 113 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 114 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 114 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 115 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 115 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 116 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 116 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 117 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 117 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 118 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 118 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 119 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 119 also enables stable pagination checkpoints.
+
+Q: How does retrieval policy 120 mitigate stale context?
+A: It applies source freshness scoring, lineage-aware deduplication, and score-calibrated merging before final ranking. Reference profile 120 also enables stable pagination checkpoints.
