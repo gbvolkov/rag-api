@@ -35,7 +35,7 @@ class DocumentService:
             parser_params_json=parser_params,
             params_json={"source": "upload"},
             input_refs_json={},
-            producer_type="kbman_svc",
+            producer_type="rag_api",
             producer_version=settings.rag_lib_producer_version,
         )
         self.session.add(version)

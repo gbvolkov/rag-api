@@ -24,7 +24,7 @@ except Exception:  # pragma: no cover - fallback for constrained environments
             return _decorator
 
 
-celery_app = Celery("kbman_svc", broker=settings.redis_url, backend=settings.redis_url)
+celery_app = Celery("rag_api", broker=settings.redis_url, backend=settings.redis_url)
 if hasattr(celery_app, "conf") and hasattr(celery_app.conf, "update"):
     celery_app.conf.update(
         task_serializer="json",

@@ -1,7 +1,7 @@
 [project]
-name = "kbman-svc"
+name = "rag-api"
 version = "0.1.0"
-description = "KBMan Service V1 over rag-lib"
+description = "RAG API service over rag-lib"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -35,7 +35,7 @@ dev = [
 ]
 
 [project.scripts]
-kbman-svc = "app.main:run"
+rag-api = "app.main:run"
 
 [build-system]
 requires = ["hatchling"]

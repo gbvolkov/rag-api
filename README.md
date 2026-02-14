@@ -1,4 +1,4 @@
-# KBMan Service
+# RAG API
 
 Project-scoped document ingestion, segmentation, chunking, indexing, retrieval, and artifact lifecycle service built on top of `rag_lib`.
 
@@ -95,7 +95,7 @@ Response `200`:
 
 ```json
 {
-  "service": "KBMan Service",
+  "service": "RAG API",
   "api": "/api/v1"
 }
 ```
@@ -756,7 +756,7 @@ Default is `chunk_vectors`. It is persisted as metadata; current build logic doe
 |---|---|---|---|
 | `embedding_provider` | qdrant/faiss build + vector retrieval | `mock` | `mock` uses deterministic mock embeddings |
 | `embedding_model_name` | qdrant/faiss | `null` | forwarded to embedding factory when provider != `mock` |
-| `collection_name` | qdrant | generated `kbman_<project_id>_<index_id>` | custom Qdrant collection name |
+| `collection_name` | qdrant | generated `rag_api_<project_id>_<index_id>` | custom Qdrant collection name |
 | `faiss_local_dir` | faiss | generated during build | populated after successful FAISS build |
 
 ## Build statuses and lifecycle

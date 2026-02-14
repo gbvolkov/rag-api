@@ -2,7 +2,7 @@
 
 ## Run Metadata
 - Date: 2026-02-14 00:48:10 +03:00
-- Workspace: `c:\Projects\kbman_svc`
+- Workspace: `c:\Projects\rag-api`
 - Command: `pytest -vv -p no:cacheprovider`
 - Python: `3.13.7`
 - Pytest: `8.3.3`

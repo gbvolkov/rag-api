@@ -5,18 +5,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "KBMan Service"
+    app_name: str = "RAG API"
     api_v1_str: str = "/api/v1"
     environment: str = "dev"
     log_level: str = "INFO"
 
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/kbman"
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/rag_api"
 
     redis_url: str = "redis://localhost:6379/0"
     celery_result_expires_seconds: int = 86400
 
     object_store_backend: str = "minio"
-    object_store_bucket: str = "kbman-artifacts"
+    object_store_bucket: str = "rag-api-artifacts"
     local_object_store_path: str = "./artifacts"
 
     minio_endpoint: str = "localhost:9000"
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = None
 
     default_index_provider: str = "qdrant"
-    default_vector_collection_prefix: str = "kbman"
+    default_vector_collection_prefix: str = "rag_api"
 
     rag_lib_producer_version: str = "93fc9354c70202c6e7d6d814200f7483d0cd8265"
 

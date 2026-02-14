@@ -54,7 +54,7 @@ class DocumentVersion(Base):
     params_json: Mapped[dict] = mapped_column(JSON, default=dict)
     input_refs_json: Mapped[dict] = mapped_column(JSON, default=dict)
     artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    producer_type: Mapped[str] = mapped_column(String(100), default="kbman_svc")
+    producer_type: Mapped[str] = mapped_column(String(100), default="rag_api")
     producer_version: Mapped[str] = mapped_column(String(100), default="v1")
     status: Mapped[str] = mapped_column(String(50), default="succeeded")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
