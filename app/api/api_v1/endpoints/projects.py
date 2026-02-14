@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.schemas.project import CreateProjectRequest, ProjectOut, UpdateProjectRequest
+from app.schemas.project import CreateProjectRequest, ProjectDeleteResponse, ProjectOut, UpdateProjectRequest
 from app.services.project_service import ProjectService
 from app.services.serializers import project_out
 
@@ -35,3 +35,10 @@ async def update_project(project_id: str, request: UpdateProjectRequest, session
     svc = ProjectService(session)
     row = await svc.update(project_id, request)
     return project_out(row)
+
+
+@router.delete("/{project_id}", response_model=ProjectDeleteResponse)
+async def delete_project(project_id: str, session: AsyncSession = Depends(get_session)):
+    svc = ProjectService(session)
+    row = await svc.soft_delete(project_id)
+    return ProjectDeleteResponse(ok=True, project_id=row.project_id)

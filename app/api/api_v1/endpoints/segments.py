@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.api_v1.deps import require_active_project
 from app.db.session import get_session
 from app.schemas.segment import (
     ClonePatchSegmentRequest,
@@ -31,7 +32,11 @@ async def create_segments(version_id: str, request: CreateSegmentsRequest, sessi
 
 
 @router.get("/projects/{project_id}/segment_sets")
-async def list_segment_sets(project_id: str, session: AsyncSession = Depends(get_session)):
+async def list_segment_sets(
+    project_id: str,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
     svc = SegmentService(session)
     rows = await svc.list_segment_sets(project_id)
     result = []

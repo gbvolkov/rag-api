@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.api_v1.deps import require_active_project
 from app.core.config import settings
 from app.core.pagination import encode_cursor, paginate
 from app.db.session import get_session
@@ -16,6 +17,7 @@ async def list_artifacts(
     project_id: str,
     limit: int = Query(default=settings.page_size_default, ge=1),
     cursor: str | None = Query(default=None),
+    _project=Depends(require_active_project),
     session: AsyncSession = Depends(get_session),
 ):
     svc = ArtifactService(session)

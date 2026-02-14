@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.api_v1.deps import require_active_project
 from app.db.session import get_session
 from app.schemas.retrieval import RetrieveRequest, RetrieveResponse, RetrievalRunOut
 from app.services.retrieval_service import RetrievalService
@@ -10,13 +11,22 @@ router = APIRouter()
 
 
 @router.post("/projects/{project_id}/retrieve", response_model=RetrieveResponse)
-async def retrieve(project_id: str, request: RetrieveRequest, session: AsyncSession = Depends(get_session)):
+async def retrieve(
+    project_id: str,
+    request: RetrieveRequest,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
     svc = RetrievalService(session)
     return await svc.retrieve(project_id, request)
 
 
 @router.get("/projects/{project_id}/retrieval_runs", response_model=list[RetrievalRunOut])
-async def list_retrieval_runs(project_id: str, session: AsyncSession = Depends(get_session)):
+async def list_retrieval_runs(
+    project_id: str,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
     svc = RetrievalService(session)
     rows = await svc.list_runs(project_id)
     return [retrieval_run_out(r) for r in rows]

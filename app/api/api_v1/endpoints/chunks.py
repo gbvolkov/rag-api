@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.api_v1.deps import require_active_project
 from app.db.session import get_session
 from app.schemas.chunk import ChunkFromSegmentRequest, ChunkSetWithItems, ClonePatchChunkRequest
 from app.services.chunk_service import ChunkService
@@ -25,7 +26,11 @@ async def chunk_segment_set(
 
 
 @router.get("/projects/{project_id}/chunk_sets")
-async def list_chunk_sets(project_id: str, session: AsyncSession = Depends(get_session)):
+async def list_chunk_sets(
+    project_id: str,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
     svc = ChunkService(session)
     rows = await svc.list_chunk_sets(project_id)
     result = []

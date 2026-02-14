@@ -5,7 +5,7 @@ from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.schemas.indexing import CreateIndexBuildRequest, CreateIndexRequest, IndexBuildOut, IndexOut
 from app.schemas.job import JobOut
 from app.schemas.pipeline import PipelineRequestMeta, PipelineResponse
-from app.schemas.project import CreateProjectRequest, ProjectOut, ProjectSettings, UpdateProjectRequest
+from app.schemas.project import CreateProjectRequest, ProjectDeleteResponse, ProjectOut, ProjectSettings, UpdateProjectRequest
 from app.schemas.retrieval import RetrieveRequest, RetrieveResponse, RetrievalRunOut
 from app.schemas.segment import CreateSegmentsRequest, ClonePatchSegmentRequest, SegmentItemOut, SegmentSetOut, SegmentSetWithItems
 
@@ -30,6 +30,7 @@ __all__ = [
     "PipelineRequestMeta",
     "PipelineResponse",
     "CreateProjectRequest",
+    "ProjectDeleteResponse",
     "ProjectOut",
     "ProjectSettings",
     "UpdateProjectRequest",

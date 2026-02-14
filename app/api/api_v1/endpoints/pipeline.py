@@ -4,6 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.api_v1.deps import require_active_project
 from app.db.session import get_session
 from app.schemas.pipeline import PipelineRequestMeta, PipelineResponse
 from app.services.index_service import IndexService
@@ -26,6 +27,7 @@ async def pipeline_file(
     index_id: str | None = Form(default=None),
     index_params_json: str | None = Form(default=None),
     execution_mode: str = Form(default="sync"),
+    _project=Depends(require_active_project),
     session: AsyncSession = Depends(get_session),
 ):
     loader_params = json.loads(loader_params_json) if loader_params_json else {}

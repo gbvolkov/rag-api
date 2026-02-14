@@ -100,6 +100,61 @@ def test_projects_documents_and_versions_crud_matrix(client, fixture_inputs_dir:
     assert any(v["version_id"] == version_id for v in versions.json())
 
 
+def test_project_soft_delete_hides_project_and_blocks_project_scoped_routes(client):
+    project_id = _create_project(client, "proj-soft-delete")
+    document_id, _ = _upload_document(client, project_id, content=b"alpha beta")
+
+    listed_before = client.get("/api/v1/projects")
+    assert listed_before.status_code == 200
+    assert any(p["project_id"] == project_id for p in listed_before.json())
+
+    deleted = client.delete(f"/api/v1/projects/{project_id}")
+    assert deleted.status_code == 200, deleted.text
+    deleted_payload = deleted.json()
+    assert deleted_payload["ok"] is True
+    assert deleted_payload["project_id"] == project_id
+
+    listed_after = client.get("/api/v1/projects")
+    assert listed_after.status_code == 200
+    assert all(p["project_id"] != project_id for p in listed_after.json())
+
+    fetched = client.get(f"/api/v1/projects/{project_id}")
+    assert fetched.status_code == 404
+
+    patched = client.patch(f"/api/v1/projects/{project_id}", json={"name": "proj-soft-delete-updated"})
+    assert patched.status_code == 404
+
+    project_docs = client.get(f"/api/v1/projects/{project_id}/documents")
+    assert project_docs.status_code == 404
+
+    project_indexes = client.get(f"/api/v1/projects/{project_id}/indexes")
+    assert project_indexes.status_code == 404
+
+    project_segments = client.get(f"/api/v1/projects/{project_id}/segment_sets")
+    assert project_segments.status_code == 404
+
+    project_chunks = client.get(f"/api/v1/projects/{project_id}/chunk_sets")
+    assert project_chunks.status_code == 404
+
+    project_runs = client.get(f"/api/v1/projects/{project_id}/retrieval_runs")
+    assert project_runs.status_code == 404
+
+    project_jobs = client.get(f"/api/v1/projects/{project_id}/jobs")
+    assert project_jobs.status_code == 404
+
+    project_artifacts = client.get(f"/api/v1/projects/{project_id}/artifacts")
+    assert project_artifacts.status_code == 404
+
+    create_index = client.post(
+        f"/api/v1/projects/{project_id}/indexes",
+        json={"name": "idx-after-delete", "provider": "faiss", "index_type": "chunk_vectors", "config": {}, "params": {}},
+    )
+    assert create_index.status_code == 404
+
+    direct_document = client.get(f"/api/v1/documents/{document_id}")
+    assert direct_document.status_code == 200
+
+
 @pytest.mark.parametrize("loader_type", ["pdf", "docx", "csv", "excel", "json", "qa", "table"])
 def test_segment_loader_type_matrix_with_source_text(client, loader_type: str):
     project_id = _create_project(client, f"proj-loader-{loader_type}")

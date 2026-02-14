@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.api_v1.deps import require_active_project
 from app.db.session import get_session
 from app.schemas.indexing import CreateIndexBuildRequest, CreateIndexRequest, IndexBuildOut, IndexOut
 from app.services.index_service import IndexService
@@ -11,7 +12,12 @@ router = APIRouter()
 
 
 @router.post("/projects/{project_id}/indexes", response_model=IndexOut)
-async def create_index(project_id: str, request: CreateIndexRequest, session: AsyncSession = Depends(get_session)):
+async def create_index(
+    project_id: str,
+    request: CreateIndexRequest,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
     svc = IndexService(session)
     row = await svc.create_index(
         project_id=project_id,
@@ -25,7 +31,11 @@ async def create_index(project_id: str, request: CreateIndexRequest, session: As
 
 
 @router.get("/projects/{project_id}/indexes", response_model=list[IndexOut])
-async def list_indexes(project_id: str, session: AsyncSession = Depends(get_session)):
+async def list_indexes(
+    project_id: str,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
     svc = IndexService(session)
     rows = await svc.list_indexes(project_id)
     return [index_out(r) for r in rows]

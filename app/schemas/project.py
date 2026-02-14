@@ -29,3 +29,8 @@ class ProjectOut(BaseModel):
     settings: ProjectSettings
     created_at: datetime
     updated_at: datetime
+
+
+class ProjectDeleteResponse(BaseModel):
+    ok: bool
+    project_id: str

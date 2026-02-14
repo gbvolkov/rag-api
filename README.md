@@ -133,7 +133,7 @@ Response `200`: `ProjectOut`
 
 ### GET `/api/v1/projects`
 
-Lists projects ordered by newest first.
+Lists non-deleted projects ordered by newest first.
 
 Response `200`: `ProjectOut[]`
 
@@ -168,6 +168,32 @@ Request body (`UpdateProjectRequest`, all optional):
 | `settings` | object \| null | no | full `ProjectSettings` replacement |
 
 Response `200`: `ProjectOut`
+
+### DELETE `/api/v1/projects/{project_id}`
+
+Soft-deletes a project (marks it as deleted; does not physically remove the row).
+
+Path params:
+
+| Name | Type | Required | Notes |
+|---|---|---|---|
+| `project_id` | string | yes | project identifier |
+
+Response `200`:
+
+```json
+{
+  "ok": true,
+  "project_id": "..."
+}
+```
+
+After delete:
+
+- `GET /api/v1/projects` excludes the project.
+- `GET /api/v1/projects/{project_id}` and `PATCH /api/v1/projects/{project_id}` return `404`.
+- All project-scoped routes under `/api/v1/projects/{project_id}/...` return `404`.
+- Existing artifact-by-id routes (for example `/api/v1/documents/{document_id}`) remain available.
 
 ## Documents
 

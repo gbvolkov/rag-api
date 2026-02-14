@@ -3,6 +3,7 @@ import json
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.api_v1.deps import require_active_project
 from app.db.session import get_session
 from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.services.document_service import DocumentService
@@ -16,6 +17,7 @@ async def upload_document(
     project_id: str,
     file: UploadFile = File(...),
     parser_params_json: str | None = Form(default=None),
+    _project=Depends(require_active_project),
     session: AsyncSession = Depends(get_session),
 ):
     parser_params = json.loads(parser_params_json) if parser_params_json else {}
@@ -37,7 +39,11 @@ async def upload_document(
 
 
 @router.get("/projects/{project_id}/documents", response_model=list[DocumentOut])
-async def list_documents(project_id: str, session: AsyncSession = Depends(get_session)):
+async def list_documents(
+    project_id: str,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
     svc = DocumentService(session)
     rows = await svc.list_documents(project_id)
     return [document_out(r) for r in rows]
