@@ -10,3 +10,6 @@ services:
 
   qdrant:
     ports: !reset []
+
+  neo4j:
+    ports: !reset []

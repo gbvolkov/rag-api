@@ -33,8 +33,23 @@ class ChunkSetOut(BaseModel):
 
 
 class ChunkFromSegmentRequest(BaseModel):
-    strategy: str = "recursive"
-    chunker_params: dict[str, Any] = Field(default_factory=dict)
+    strategy: str = Field(
+        default="recursive",
+        description="Chunk strategy. Supported: recursive|token|sentence|regex|markdown_table|semantic.",
+        examples=["regex", "recursive"],
+    )
+    chunker_params: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Strategy-specific options. For strategy=regex, 'pattern' is required and passed to Python re.split. "
+            "If the pattern uses capturing groups, those captures are returned as standalone chunks."
+        ),
+        examples=[
+            {"pattern": "\\.\\s+"},
+            {"pattern": "(?=Section\\s+\\d+:)"},
+            {"pattern": "(\\.\\s+)"},
+        ],
+    )
 
 
 class ClonePatchChunkRequest(BaseModel):

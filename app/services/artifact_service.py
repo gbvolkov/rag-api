@@ -11,6 +11,7 @@ from app.models import (
     ChunkSetVersion,
     Document,
     DocumentVersion,
+    GraphBuild,
     Index,
     IndexBuild,
     RetrievalRun,
@@ -88,6 +89,14 @@ class ArtifactService:
             lambda r: {"index_id": r.index_id, "status": r.status, "is_active": r.is_active},
         )
         await add_rows(
+            select(GraphBuild).where(GraphBuild.project_id == project_id),
+            "graph_build",
+            "graph_build_id",
+            "created_at",
+            "is_deleted",
+            lambda r: {"source_type": r.source_type, "source_id": r.source_id, "backend": r.backend, "status": r.status},
+        )
+        await add_rows(
             select(RetrievalRun).where(RetrievalRun.project_id == project_id),
             "retrieval_run",
             "run_id",
@@ -148,6 +157,7 @@ class ArtifactService:
             (ChunkSetVersion, "chunk_set", "project_id", "chunk_set_version_id"),
             (Index, "index", "project_id", "index_id"),
             (IndexBuild, "index_build", "project_id", "build_id"),
+            (GraphBuild, "graph_build", "project_id", "graph_build_id"),
             (RetrievalRun, "retrieval_run", "project_id", "run_id"),
         ]
 

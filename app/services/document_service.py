@@ -4,7 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import api_error
+from app.core.mime_utils import normalize_mime
 from app.models import Document, DocumentVersion, Project
+from app.storage.keys import uri_to_key
 from app.storage.object_store import object_store
 
 
@@ -17,12 +19,13 @@ class DocumentService:
         if not project:
             raise api_error(404, "project_not_found", "Project not found", {"project_id": project_id})
 
+        normalized_mime = normalize_mime(mime)
         content_hash = hashlib.sha256(payload).hexdigest()
 
         document = Document(
             project_id=project_id,
             filename=filename,
-            mime=mime,
+            mime=normalized_mime,
             storage_uri="pending",
             metadata_json={"size": len(payload)},
         )
@@ -42,7 +45,7 @@ class DocumentService:
         await self.session.flush()
 
         key = f"projects/{project_id}/documents/{document.document_id}/{version.version_id}/raw/{filename}"
-        uri = object_store.put_bytes(key, payload, content_type=mime or "application/octet-stream")
+        uri = object_store.put_bytes(key, payload, content_type=normalized_mime)
 
         document.storage_uri = uri
         version.artifact_uri = uri
@@ -81,3 +84,23 @@ class DocumentService:
         if not row or row.is_deleted:
             raise api_error(404, "document_version_not_found", "Document version not found", {"version_id": version_id})
         return row
+
+    async def get_version_content(self, version_id: str) -> tuple[DocumentVersion, Document, bytes]:
+        version = await self.get_version(version_id)
+        document = await self.session.get(Document, version.document_id)
+        if not document or document.is_deleted:
+            raise api_error(404, "document_not_found", "Document not found", {"document_id": version.document_id})
+
+        uri = version.artifact_uri or document.storage_uri
+        key = uri_to_key(uri)
+        try:
+            content = object_store.get_bytes(key)
+        except Exception:
+            raise api_error(
+                404,
+                "document_content_not_found",
+                "Document content not found",
+                {"version_id": version_id, "document_id": document.document_id},
+            ) from None
+
+        return version, document, content

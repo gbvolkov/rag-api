@@ -1,9 +1,11 @@
 import json
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.api_v1.deps import require_active_project
+from app.core.mime_utils import effective_preview_mime
 from app.db.session import get_session
 from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.services.document_service import DocumentService
@@ -61,3 +63,17 @@ async def list_document_versions(document_id: str, session: AsyncSession = Depen
     svc = DocumentService(session)
     rows = await svc.list_versions(document_id)
     return [document_version_out(r) for r in rows]
+
+
+@router.get("/document_versions/{version_id}/content")
+async def get_document_version_content(version_id: str, session: AsyncSession = Depends(get_session)):
+    svc = DocumentService(session)
+    version, document, content = await svc.get_version_content(version_id)
+    mime = effective_preview_mime(document.mime, document.filename)
+    quoted_name = quote(document.filename, safe="")
+    headers = {
+        "Content-Disposition": f"inline; filename*=UTF-8''{quoted_name}",
+        "ETag": f'"{version.content_hash}"',
+        "X-Content-Type-Options": "nosniff",
+    }
+    return Response(content=content, media_type=mime, headers=headers)

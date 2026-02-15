@@ -164,6 +164,26 @@ class IndexBuild(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 
 
+class GraphBuild(Base):
+    __tablename__ = "graph_builds"
+
+    graph_build_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
+    source_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    source_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    backend: Mapped[str] = mapped_column(String(50), nullable=False)
+    params_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    input_refs_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="queued")
+    producer_type: Mapped[str] = mapped_column(String(100), default="rag_lib")
+    producer_version: Mapped[str] = mapped_column(String(100), default="unknown")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+
 class RetrievalRun(Base):
     __tablename__ = "retrieval_runs"
 

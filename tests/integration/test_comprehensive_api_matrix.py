@@ -155,7 +155,82 @@ def test_project_soft_delete_hides_project_and_blocks_project_scoped_routes(clie
     assert direct_document.status_code == 200
 
 
-@pytest.mark.parametrize("loader_type", ["pdf", "docx", "csv", "excel", "json", "qa", "table"])
+def test_document_version_content_preview_text(client):
+    project_id = _create_project(client, "proj-preview-text")
+    content = b"alpha beta gamma"
+    _document_id, version_id = _upload_document(client, project_id, filename="preview.txt", content=content)
+
+    preview = client.get(f"/api/v1/document_versions/{version_id}/content")
+    assert preview.status_code == 200, preview.text
+    assert preview.content == content
+    assert "text/plain" in preview.headers.get("content-type", "")
+    assert "inline;" in preview.headers.get("content-disposition", "")
+    assert "filename*=UTF-8''preview.txt" in preview.headers.get("content-disposition", "")
+    assert preview.headers.get("etag")
+
+
+def test_document_version_content_preview_pdf(client, fixture_inputs_dir: Path):
+    project_id = _create_project(client, "proj-preview-pdf")
+    expected = _read_fixture_bytes(fixture_inputs_dir, "long_tables.pdf")
+    _document_id, version_id = _upload_fixture_document(
+        client,
+        project_id,
+        fixture_inputs_dir,
+        filename="long_tables.pdf",
+        mime="application/pdf",
+        parser_type="pdf",
+    )
+
+    preview = client.get(f"/api/v1/document_versions/{version_id}/content")
+    assert preview.status_code == 200, preview.text
+    assert preview.content == expected
+    assert "application/pdf" in preview.headers.get("content-type", "")
+
+
+def test_document_version_content_preview_not_found_for_unknown_version(client):
+    preview = client.get("/api/v1/document_versions/missing-version/content")
+    assert preview.status_code == 404
+    assert preview.json()["detail"]["code"] == "document_version_not_found"
+
+
+def test_document_version_content_preview_not_found_for_deleted_version(client):
+    project_id = _create_project(client, "proj-preview-del-version")
+    _document_id, version_id = _upload_document(client, project_id, content=b"alpha beta")
+
+    deleted = client.request("DELETE", f"/api/v1/artifacts/{version_id}", json={"reason": "delete-version"})
+    assert deleted.status_code == 200, deleted.text
+
+    preview = client.get(f"/api/v1/document_versions/{version_id}/content")
+    assert preview.status_code == 404
+    assert preview.json()["detail"]["code"] == "document_version_not_found"
+
+
+def test_document_version_content_preview_not_found_for_deleted_document(client):
+    project_id = _create_project(client, "proj-preview-del-document")
+    document_id, version_id = _upload_document(client, project_id, content=b"alpha beta")
+
+    deleted = client.request("DELETE", f"/api/v1/artifacts/{document_id}", json={"reason": "delete-document"})
+    assert deleted.status_code == 200, deleted.text
+
+    preview = client.get(f"/api/v1/document_versions/{version_id}/content")
+    assert preview.status_code == 404
+    assert preview.json()["detail"]["code"] == "document_not_found"
+
+
+def test_document_version_content_preview_works_after_project_soft_delete(client):
+    project_id = _create_project(client, "proj-preview-after-project-delete")
+    content = b"still visible by direct artifact route"
+    _document_id, version_id = _upload_document(client, project_id, filename="artifact.txt", content=content)
+
+    deleted_project = client.delete(f"/api/v1/projects/{project_id}")
+    assert deleted_project.status_code == 200, deleted_project.text
+
+    preview = client.get(f"/api/v1/document_versions/{version_id}/content")
+    assert preview.status_code == 200, preview.text
+    assert preview.content == content
+
+
+@pytest.mark.parametrize("loader_type", ["pdf", "miner_u", "docx", "csv", "excel", "json", "qa", "table", "regex"])
 def test_segment_loader_type_matrix_with_source_text(client, loader_type: str):
     project_id = _create_project(client, f"proj-loader-{loader_type}")
     _, version_id = _upload_document(client, project_id, content=b"irrelevant")
@@ -180,6 +255,7 @@ def test_segment_loader_type_matrix_with_source_text(client, loader_type: str):
         ("qa", "long_qa.txt", "text/plain", {}, 50),
         ("table", "long_table.csv", "text/csv", {"mode": "row"}, 100),
         ("table", "long_table.csv", "text/csv", {"mode": "group", "group_by": "region"}, 4),
+        ("regex", "long_text.txt", "text/plain", {"patterns": [[1, r"^Section\s+(\d+):"]]}, 50),
     ],
 )
 def test_segment_loader_type_matrix_with_real_files(

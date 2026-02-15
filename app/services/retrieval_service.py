@@ -45,6 +45,10 @@ class RetrievalService:
             docs = await self._run_rerank(project_id, request, docs)
         elif strategy_type == "dual_storage":
             docs = await self._run_dual_storage(project_id, request, docs)
+        elif strategy_type == "graph":
+            docs = await self._run_graph(request)
+        elif strategy_type == "graph_hybrid":
+            docs = await self._run_graph_hybrid(project_id, request)
         else:
             raise api_error(400, "unsupported_strategy", "Unsupported retrieval strategy", {"strategy": strategy_type})
 
@@ -153,11 +157,15 @@ class RetrievalService:
         if not index_row or index_row.is_deleted:
             raise api_error(404, "index_not_found", "Index not found", {"index_id": build.index_id})
         provider = index_row.provider.lower()
-        if provider not in {"qdrant", "faiss"}:
-            raise api_error(501, "provider_unsupported", "Only qdrant and faiss providers are currently implemented")
+        if provider not in {"qdrant", "faiss", "chroma", "postgres"}:
+            raise api_error(501, "provider_unsupported", "Provider is not implemented", {"provider": provider})
 
         if provider == "faiss":
             return self._run_vector_faiss(index_row=index_row, query=request.query, k=request.strategy.k)
+        if provider == "chroma":
+            return self._run_vector_chroma(index_row=index_row, query=request.query, k=request.strategy.k)
+        if provider == "postgres":
+            return self._run_vector_postgres(index_row=index_row, query=request.query, k=request.strategy.k)
 
         collection = index_row.config_json.get(
             "collection_name",
@@ -191,6 +199,50 @@ class RetrievalService:
 
         embeddings = self._get_embeddings(index_row)
         store = FAISS.load_local(faiss_dir, embeddings, allow_dangerous_deserialization=True)
+        scored = store.similarity_search_with_score(query=query, k=k)
+
+        docs: list[LCDocument] = []
+        for doc, score in scored:
+            metadata = dict(doc.metadata or {})
+            metadata["score"] = float(score)
+            docs.append(LCDocument(page_content=doc.page_content, metadata=metadata))
+        return docs
+
+    def _run_vector_chroma(self, index_row: Index, query: str, k: int) -> list[LCDocument]:
+        persist_directory = index_row.config_json.get("chroma_persist_directory")
+        collection_name = index_row.config_json.get("collection_name")
+        if not persist_directory or not collection_name:
+            raise api_error(500, "missing_chroma_artifact", "Chroma index configuration is incomplete", {"index_id": index_row.index_id})
+
+        try:
+            from langchain_chroma import Chroma
+        except Exception:
+            raise api_error(424, "missing_dependency", "Chroma runtime dependency is not available", {"provider": "chroma"})
+
+        embeddings = self._get_embeddings(index_row)
+        store = Chroma(collection_name=collection_name, embedding_function=embeddings, persist_directory=persist_directory)
+        scored = store.similarity_search_with_score(query=query, k=k)
+
+        docs: list[LCDocument] = []
+        for doc, score in scored:
+            metadata = dict(doc.metadata or {})
+            metadata["score"] = float(score)
+            docs.append(LCDocument(page_content=doc.page_content, metadata=metadata))
+        return docs
+
+    def _run_vector_postgres(self, index_row: Index, query: str, k: int) -> list[LCDocument]:
+        collection_name = index_row.config_json.get("collection_name")
+        connection = index_row.config_json.get("connection") or settings.vector_postgres_connection
+        if not collection_name or not connection:
+            raise api_error(500, "missing_pgvector_config", "Postgres vector configuration is incomplete", {"index_id": index_row.index_id})
+
+        try:
+            from langchain_postgres import PGVector
+        except Exception:
+            raise api_error(424, "missing_dependency", "PGVector runtime dependency is not available", {"provider": "postgres"})
+
+        embeddings = self._get_embeddings(index_row)
+        store = PGVector(embeddings=embeddings, collection_name=collection_name, connection=connection, use_jsonb=True)
         scored = store.similarity_search_with_score(query=query, k=k)
 
         docs: list[LCDocument] = []
@@ -369,6 +421,77 @@ class RetrievalService:
                     },
                 )
             )
+        return out
+
+    async def _run_graph(self, request: RetrieveRequest) -> list[LCDocument]:
+        from app.services.graph_service import GraphService
+
+        svc = GraphService(self.session)
+        docs = await svc.query_graph(
+            graph_build_id=request.strategy.graph_build_id,
+            query=request.query,
+            mode=request.strategy.mode,
+            search_depth=request.strategy.search_depth,
+        )
+        return list(docs)
+
+    async def _run_graph_hybrid(self, project_id: str, request: RetrieveRequest) -> list[LCDocument]:
+        graph_docs = await self._run_graph(request)
+
+        # Reuse vector retrieval path if caller provided an index_build target.
+        vector_docs: list[LCDocument] = []
+        vector_spec = request.strategy.vector or {}
+        if request.target == "index_build" and request.target_id:
+            vector_req = request.model_copy(deep=True)
+            vector_req.strategy = VectorConfig(
+                k=int(vector_spec.get("k", 10)),
+                search_type=vector_spec.get("search_type", "similarity"),
+                score_threshold=vector_spec.get("score_threshold"),
+            )
+            vector_docs = await self._run_vector(project_id, vector_req)
+
+        merged = self._merge_scored_lists(
+            vector_docs,
+            graph_docs,
+            request.strategy.weights or [0.7, 0.3],
+        )
+        return merged
+
+    def _merge_scored_lists(
+        self,
+        vector_docs: list[LCDocument],
+        graph_docs: list[LCDocument],
+        weights: list[float],
+    ) -> list[LCDocument]:
+        vector_weight = weights[0] if len(weights) > 0 else 0.7
+        graph_weight = weights[1] if len(weights) > 1 else 0.3
+
+        scores: dict[str, tuple[LCDocument, float]] = {}
+
+        for rank, doc in enumerate(vector_docs):
+            key = doc.metadata.get("item_id") or doc.metadata.get("chunk_item_id") or doc.page_content
+            score = vector_weight * (1.0 / (rank + 1))
+            existing = scores.get(key)
+            if existing:
+                scores[key] = (existing[0], existing[1] + score)
+            else:
+                scores[key] = (doc, score)
+
+        for rank, doc in enumerate(graph_docs):
+            key = doc.metadata.get("node_id") or doc.page_content
+            score = graph_weight * (1.0 / (rank + 1))
+            existing = scores.get(key)
+            if existing:
+                scores[key] = (existing[0], existing[1] + score)
+            else:
+                scores[key] = (doc, score)
+
+        ranked = sorted(scores.values(), key=lambda item: item[1], reverse=True)
+        out: list[LCDocument] = []
+        for doc, score in ranked:
+            meta = dict(doc.metadata or {})
+            meta["score"] = float(score)
+            out.append(LCDocument(page_content=doc.page_content, metadata=meta))
         return out
 
     async def _latest_active_chunk_set(self, project_id: str) -> str:

@@ -3,6 +3,7 @@ from app.models import (
     ChunkSetVersion,
     Document,
     DocumentVersion,
+    GraphBuild,
     Index,
     IndexBuild,
     Job,
@@ -13,6 +14,7 @@ from app.models import (
 )
 from app.schemas.chunk import ChunkItemOut, ChunkSetOut
 from app.schemas.document import DocumentOut, DocumentVersionOut
+from app.schemas.graph import GraphBuildOut
 from app.schemas.indexing import IndexBuildOut, IndexOut
 from app.schemas.job import JobOut
 from app.schemas.project import ProjectOut, ProjectSettings
@@ -150,6 +152,26 @@ def index_build_out(m: IndexBuild) -> IndexBuildOut:
         index_id=m.index_id,
         project_id=m.project_id,
         chunk_set_version_id=m.chunk_set_version_id,
+        params=m.params_json or {},
+        input_refs=m.input_refs_json or {},
+        artifact_uri=m.artifact_uri,
+        status=m.status,
+        producer_type=m.producer_type,
+        producer_version=m.producer_version,
+        is_active=m.is_active,
+        is_deleted=m.is_deleted,
+        created_at=m.created_at,
+        updated_at=m.updated_at,
+    )
+
+
+def graph_build_out(m: GraphBuild) -> GraphBuildOut:
+    return GraphBuildOut(
+        graph_build_id=m.graph_build_id,
+        project_id=m.project_id,
+        source_type=m.source_type,
+        source_id=m.source_id,
+        backend=m.backend,
         params=m.params_json or {},
         input_refs=m.input_refs_json or {},
         artifact_uri=m.artifact_uri,

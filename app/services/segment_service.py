@@ -1,11 +1,12 @@
-import json
 import os
 import tempfile
 import uuid
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.capabilities import require_feature, require_module
 from app.core.config import settings
 from app.core.errors import api_error
 from app.models import Document, DocumentVersion, SegmentItem, SegmentSetVersion
@@ -46,18 +47,38 @@ class SegmentService:
 
         segments = await self._load_segments(document, loader_type, loader_params, source_text)
 
-        await self.session.execute(
-            update(SegmentSetVersion)
-            .where(SegmentSetVersion.document_version_id == version_id)
-            .values(is_active=False)
-        )
-
-        segment_set = SegmentSetVersion(
+        return await self.create_derived_from_segments(
             project_id=document.project_id,
             document_version_id=version_id,
             parent_segment_set_version_id=None,
-            params_json={"loader_type": loader_type, "loader_params": loader_params, "source_text": bool(source_text)},
-            input_refs_json={"document_version_id": version_id},
+            segments=segments,
+            params={"loader_type": loader_type, "loader_params": loader_params, "source_text": bool(source_text)},
+            input_refs={"document_version_id": version_id},
+        )
+
+    async def create_derived_from_segments(
+        self,
+        *,
+        project_id: str,
+        document_version_id: str | None,
+        parent_segment_set_version_id: str | None,
+        segments: list[object],
+        params: dict[str, Any],
+        input_refs: dict[str, Any],
+    ) -> SegmentSetVersion:
+        if document_version_id:
+            await self.session.execute(
+                update(SegmentSetVersion)
+                .where(SegmentSetVersion.document_version_id == document_version_id, SegmentSetVersion.is_active.is_(True))
+                .values(is_active=False)
+            )
+
+        segment_set = SegmentSetVersion(
+            project_id=project_id,
+            document_version_id=document_version_id,
+            parent_segment_set_version_id=parent_segment_set_version_id,
+            params_json=params,
+            input_refs_json=input_refs,
             producer_type="rag_lib",
             producer_version=settings.rag_lib_producer_version,
             is_active=True,
@@ -87,12 +108,12 @@ class SegmentService:
 
         self.session.add_all(rows)
 
-        key = f"projects/{document.project_id}/segments/{segment_set.segment_set_version_id}/segments.json"
+        key = f"projects/{project_id}/segments/{segment_set.segment_set_version_id}/segments.json"
         artifact_uri = object_store.put_json(key, snapshot)
         segment_set.artifact_uri = artifact_uri
 
         mirror_key = (
-            f"projects/{document.project_id}/metadata_mirror/segment_set/{segment_set.segment_set_version_id}.json"
+            f"projects/{project_id}/metadata_mirror/segment_set/{segment_set.segment_set_version_id}.json"
         )
         object_store.put_json(
             mirror_key,
@@ -129,7 +150,28 @@ class SegmentService:
             if loader_type == "pdf":
                 from rag_lib.loaders.pdf import PDFLoader
 
-                loader = PDFLoader(file_path=path, backend=loader_params.get("backend"))
+                summarizer = None
+                if loader_params.get("summarize_tables", False):
+                    summarizer = self._build_pdf_summarizer(loader_params.get("table_summarizer", {}))
+                loader = PDFLoader(file_path=path, backend=loader_params.get("backend"), summarizer=summarizer)
+            elif loader_type == "miner_u":
+                require_feature(
+                    settings.feature_enable_miner_u,
+                    "miner_u",
+                    hint="Set FEATURE_ENABLE_MINER_U=true to enable MinerU loader.",
+                )
+                fallback = bool(loader_params.get("fallback_to_pdf_loader", True))
+                try:
+                    require_module("magic_pdf", "miner_u", install_hint="Install optional dependency 'magic-pdf'.")
+                    from rag_lib.loaders.miner_u import MinerULoader
+
+                    loader = MinerULoader(file_path=path)
+                except Exception:
+                    if not fallback:
+                        raise
+                    from rag_lib.loaders.pdf import PDFLoader
+
+                    loader = PDFLoader(file_path=path, backend=loader_params.get("backend"))
             elif loader_type == "docx":
                 from rag_lib.loaders.structured import StructuredLoader
 
@@ -163,6 +205,30 @@ class SegmentService:
                     mode=loader_params.get("mode", "row"),
                     group_by=loader_params.get("group_by"),
                 )
+            elif loader_type == "regex":
+                from rag_lib.loaders.regex import RegexHierarchyLoader
+
+                raw_patterns = loader_params.get("patterns")
+                if not isinstance(raw_patterns, list) or not raw_patterns:
+                    raise api_error(
+                        400,
+                        "invalid_loader_params",
+                        "regex loader requires non-empty patterns list",
+                    )
+
+                normalized_patterns = []
+                for item in raw_patterns:
+                    if isinstance(item, list) and len(item) == 2:
+                        normalized_patterns.append((item[0], item[1]))
+                    else:
+                        normalized_patterns.append(item)
+
+                loader = RegexHierarchyLoader(
+                    file_path=path,
+                    patterns=normalized_patterns,
+                    exclude_patterns=loader_params.get("exclude_patterns"),
+                    include_parent_content=loader_params.get("include_parent_content", False),
+                )
             else:
                 raise api_error(400, "unsupported_loader", "Unsupported loader type", {"loader_type": loader_type})
 
@@ -172,6 +238,35 @@ class SegmentService:
                 os.remove(path)
             except OSError:
                 pass
+
+    def _build_pdf_summarizer(self, cfg: dict[str, Any]):
+        kind = str((cfg or {}).get("type", "mock")).lower()
+        if kind == "mock":
+            from rag_lib.summarizers.table import MockTableSummarizer
+
+            return MockTableSummarizer()
+
+        if kind != "llm":
+            raise api_error(400, "invalid_loader_params", "table_summarizer.type must be mock or llm")
+
+        require_feature(
+            settings.feature_enable_llm,
+            "llm",
+            hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.",
+        )
+        from rag_lib.llm.factory import get_llm
+        from rag_lib.summarizers.table_llm import LLMTableSummarizer
+
+        try:
+            llm = get_llm(
+                provider=cfg.get("llm_provider") or settings.llm_provider_default,
+                model=cfg.get("model") or settings.llm_model_default,
+                temperature=settings.llm_temperature_default if cfg.get("temperature") is None else cfg.get("temperature"),
+                streaming=False,
+            )
+        except Exception as exc:
+            raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
+        return LLMTableSummarizer(llm=llm)
 
     async def list_segment_sets(self, project_id: str) -> list[SegmentSetVersion]:
         stmt = (

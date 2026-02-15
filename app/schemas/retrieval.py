@@ -46,12 +46,28 @@ class DualStorageConfig(BaseModel):
     id_key: str = "segment_id"
 
 
-StrategyConfig = VectorConfig | BM25Config | RegexConfig | FuzzyConfig | EnsembleConfig | RerankConfig | DualStorageConfig
+class GraphConfig(BaseModel):
+    type: Literal["graph"] = "graph"
+    graph_build_id: str
+    mode: Literal["local", "global"] = "local"
+    search_depth: int = 1
+
+
+class GraphHybridConfig(BaseModel):
+    type: Literal["graph_hybrid"] = "graph_hybrid"
+    graph_build_id: str
+    mode: Literal["local", "global"] = "local"
+    search_depth: int = 1
+    vector: dict[str, Any] = Field(default_factory=lambda: {"k": 10, "search_type": "similarity", "score_threshold": None})
+    weights: list[float] | None = None
+
+
+StrategyConfig = VectorConfig | BM25Config | RegexConfig | FuzzyConfig | EnsembleConfig | RerankConfig | DualStorageConfig | GraphConfig | GraphHybridConfig
 
 
 class RetrieveRequest(BaseModel):
     query: str
-    target: str = Field(default="chunk_set", description="chunk_set|segment_set|index_build")
+    target: str = Field(default="chunk_set", description="chunk_set|segment_set|index_build|graph_build")
     target_id: str | None = None
     strategy: StrategyConfig = Field(discriminator="type")
     persist: bool = False

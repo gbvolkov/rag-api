@@ -5,12 +5,14 @@ from app.api.api_v1.endpoints import (
     artifacts,
     chunks,
     documents,
+    graph,
     indexes,
     jobs,
     pipeline,
     projects,
     retrieval,
     segments,
+    tables,
 )
 
 api_router = APIRouter()
@@ -19,8 +21,10 @@ api_router.include_router(documents.router, tags=["documents"])
 api_router.include_router(segments.router, tags=["segments"])
 api_router.include_router(chunks.router, tags=["chunks"])
 api_router.include_router(indexes.router, tags=["indexes"])
+api_router.include_router(graph.router, tags=["graph"])
 api_router.include_router(retrieval.router, tags=["retrieval"])
 api_router.include_router(jobs.router, tags=["jobs"])
 api_router.include_router(admin.router, tags=["admin"])
 api_router.include_router(pipeline.router, tags=["pipeline"])
 api_router.include_router(artifacts.router, tags=["artifacts"])
+api_router.include_router(tables.router, tags=["tables"])

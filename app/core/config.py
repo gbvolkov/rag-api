@@ -1,5 +1,27 @@
+import json
+from importlib import metadata
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _detect_rag_lib_producer_version() -> str:
+    try:
+        dist = metadata.distribution("rag-lib")
+    except metadata.PackageNotFoundError:
+        return "unknown"
+
+    direct_url = dist.read_text("direct_url.json")
+    if direct_url:
+        try:
+            payload = json.loads(direct_url)
+            commit_id = payload.get("vcs_info", {}).get("commit_id")
+            if commit_id:
+                return str(commit_id)
+        except json.JSONDecodeError:
+            pass
+
+    return dist.version or "unknown"
 
 
 class Settings(BaseSettings):
@@ -29,8 +51,30 @@ class Settings(BaseSettings):
 
     default_index_provider: str = "qdrant"
     default_vector_collection_prefix: str = "rag_api"
+    chroma_persist_directory: str = "./artifacts/chroma"
+    vector_postgres_connection: str | None = None
 
-    rag_lib_producer_version: str = "93fc9354c70202c6e7d6d814200f7483d0cd8265"
+    feature_enable_llm: bool = False
+    feature_enable_graph: bool = False
+    feature_enable_raptor: bool = False
+    feature_enable_miner_u: bool = False
+
+    graph_backend_default: str = "neo4j"
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "neo4jpassword"
+    neo4j_database: str = "neo4j"
+
+    llm_provider_default: str = "openai"
+    llm_model_default: str = "gpt-4o-mini"
+    llm_temperature_default: float = 0.0
+    openai_api_key: str | None = None
+    openai_api_key_personal: str | None = None
+    mistral_api_key: str | None = None
+    ya_api_key: str | None = None
+    ya_folder_id: str | None = None
+
+    rag_lib_producer_version: str = Field(default_factory=_detect_rag_lib_producer_version)
 
     page_size_default: int = 20
     page_size_max: int = 200

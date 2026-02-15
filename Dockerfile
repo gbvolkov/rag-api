@@ -2,7 +2,7 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential git poppler-utils ghostscript libgl1 && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md ./
 COPY app ./app

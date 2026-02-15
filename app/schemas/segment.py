@@ -43,9 +43,51 @@ class SegmentSetOut(BaseModel):
 
 
 class CreateSegmentsRequest(BaseModel):
-    loader_type: str = Field(description="pdf|docx|csv|excel|json|qa|table")
-    loader_params: dict[str, Any] = Field(default_factory=dict)
-    source_text: str | None = None
+    loader_type: str = Field(
+        description=(
+            "Segment loader type. Supported: pdf|miner_u|docx|csv|excel|json|qa|table|regex. "
+            "Regex and DOCX regex_patterns details are documented in README sections "
+            "'Regex Loader Contract' and 'DOCX + regex_patterns hierarchy behavior'."
+        ),
+        examples=["regex", "docx", "pdf"],
+    )
+    loader_params: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Loader-specific options. "
+            "Regex loader expects patterns/exclude_patterns/include_parent_content. "
+            "DOCX loader may use regex_patterns for additional hierarchy splitting."
+        ),
+        examples=[
+            {
+                "patterns": [
+                    [1, "^Section\\s+(\\d+):"],
+                    [2, "^Subsection\\s+(\\d+\\.\\d+):"],
+                ],
+                "exclude_patterns": ["^\\s*#"],
+                "include_parent_content": 2,
+            },
+            {
+                "patterns": [
+                    {"level": 1, "pattern": "^Chapter\\s+(.+)$"},
+                    {"level": 2, "pattern": ["^Section\\s+(.+)$", "^Clause\\s+(.+)$"]},
+                ]
+            },
+            {
+                "regex_patterns": [[2, "^Subsection\\s+(\\d+\\.\\d+):"]],
+                "exclude_patterns": ["^DRAFT\\b"],
+                "include_parent_content": True,
+            },
+        ],
+    )
+    source_text: str | None = Field(
+        default=None,
+        description=(
+            "Optional direct text input. When provided, loader_type/loader_params are bypassed and "
+            "a single text segment is emitted."
+        ),
+        examples=["Inline text to segment without reading the uploaded file."],
+    )
 
 
 class ClonePatchSegmentRequest(BaseModel):
@@ -57,3 +99,22 @@ class ClonePatchSegmentRequest(BaseModel):
 class SegmentSetWithItems(BaseModel):
     segment_set: SegmentSetOut
     items: list[SegmentItemOut]
+
+
+class EnrichSegmentsRequest(BaseModel):
+    execution_mode: str = "sync"
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    llm_temperature: float | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class RaptorSegmentsRequest(BaseModel):
+    execution_mode: str = "async"
+    max_levels: int = 3
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    llm_temperature: float | None = None
+    embedding_provider: str = "openai"
+    embedding_model_name: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)

@@ -262,6 +262,38 @@ Path params:
 
 Response `200`: `DocumentVersionOut[]`
 
+### GET `/api/v1/document_versions/{version_id}/content`
+
+Streams raw bytes for one non-deleted document version (for client preview/download).
+
+Path params:
+
+| Name | Type | Required |
+|---|---|---|
+| `version_id` | string | yes |
+
+Response `200`:
+
+- Body: raw file bytes
+- Headers:
+  - `Content-Type`: effective preview MIME
+  - `Content-Disposition`: `inline; filename*=UTF-8''<filename>`
+  - `ETag`: document version `content_hash`
+  - `X-Content-Type-Options: nosniff`
+
+MIME behavior:
+
+- Upload MIME is normalized and stored with the document.
+- If stored MIME is generic (`application/octet-stream`), preview MIME is inferred from filename where possible.
+- If inference fails, `application/octet-stream` is returned.
+
+Common frontend behavior:
+
+- Render `application/pdf` in iframe/object.
+- Render `image/*` in image tags.
+- Render `text/*` and `application/json` in text/code viewers.
+- For DOCX MIME, use a client viewer library (for example `docx-preview`/`mammoth`) or fallback to download.
+
 ## Segments
 
 ### POST `/api/v1/document_versions/{version_id}/segments`
@@ -278,8 +310,8 @@ Request body (`CreateSegmentsRequest`):
 
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `loader_type` | string | yes | - | `pdf`, `docx`, `csv`, `excel`, `json`, `qa`, `table` |
-| `loader_params` | object | no | `{}` | loader-specific options |
+| `loader_type` | string | yes | - | `pdf`, `miner_u`, `docx`, `csv`, `excel`, `json`, `qa`, `table`, `regex` |
+| `loader_params` | object | no | `{}` | loader-specific options (see Regex Loader Contract and DOCX + regex_patterns sections below) |
 | `source_text` | string \| null | no | `null` | if provided, loader is bypassed and a single text segment is produced |
 
 Response `200`: `SegmentSetWithItems`
@@ -345,7 +377,7 @@ Request body (`ChunkFromSegmentRequest`):
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
 | `strategy` | string | no | `recursive` | see chunk strategy matrix below |
-| `chunker_params` | object | no | `{}` | strategy-specific options |
+| `chunker_params` | object | no | `{}` | strategy-specific options (see Regex Chunker Contract below for `strategy=regex`) |
 
 Response `200`: `ChunkSetWithItems`
 
@@ -709,17 +741,152 @@ Used by `POST /api/v1/document_versions/{version_id}/segments` when `source_text
 | Loader `loader_type` | Supported params (`loader_params`) | Notes |
 |---|---|---|
 | `pdf` | `backend` | Delegates to `rag_lib.loaders.pdf.PDFLoader` |
+| `miner_u` | `fallback_to_pdf_loader` (default `true`) | Delegates to `rag_lib.loaders.miner_u.MinerULoader` when feature + dependency are enabled |
 | `docx` | `regex_patterns`, `exclude_patterns`, `include_parent_content` (default `true`) | Structured loader |
 | `csv` | `chunk_size` | CSV loader |
 | `excel` | none | Excel loader |
 | `json` | `jq_schema` (default `"."`) | JSON loader |
 | `qa` | none | QA loader |
 | `table` | `mode` (default `"row"`), `group_by` | table rows/groups |
+| `regex` | `patterns` (required), `exclude_patterns`, `include_parent_content` | Delegates to `rag_lib.loaders.regex.RegexHierarchyLoader` |
 
 Important behavior:
 
 - If `source_text` is provided, service returns exactly one text segment and ignores file loader execution.
 - Unsupported loader without `source_text` returns `400 unsupported_loader`.
+
+### Regex Loader Contract (`loader_type=regex`)
+
+This section describes the exact runtime behavior of `rag_lib.loaders.regex.RegexHierarchyLoader` as used by this API.
+
+`loader_params` fields:
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `patterns` | array | yes | - | accepted shapes: `[[level:int, pattern:str], ...]` or `[{"level": int, "pattern": str \| string[]}, ...]` |
+| `exclude_patterns` | string[] | no | `[]` | lines matching any pattern are skipped from hierarchy matching |
+| `include_parent_content` | bool \| int | no | `false` | content concatenation mode, see table below |
+
+`include_parent_content` behavior:
+
+| Value | Behavior |
+|---|---|
+| `false` | child segment content is only its own matched block |
+| `true` | child segment content is prefixed with full ancestor content chain |
+| `N` (int) | ancestor content is prefixed only when parent level is `>= N` |
+
+Matching semantics:
+
+- Processing is line-based (`splitlines`).
+- Pattern evaluation is ordered; first matching pattern wins.
+- Matching uses Python regex `search` (not `match`) for this loader.
+- `metadata.title` source:
+  - first capture group (`group(1)`) when present
+  - else trailing text after the matched portion
+  - else full line text
+
+Hierarchy semantics in output:
+
+- `level` equals the configured pattern level.
+- `path` contains ancestor titles only (current title is not appended to its own path).
+- `parent_id` is typically `null` for regex-loader-produced segments.
+- A level-0 root/preamble segment is emitted when pre-heading content exists and is non-empty after trimming.
+
+Validation/error behavior:
+
+- Missing or empty `patterns` returns `400 invalid_loader_params`.
+
+Example request payload:
+
+```json
+{
+  "loader_type": "regex",
+  "loader_params": {
+    "patterns": [
+      [1, "^Section\\s+(\\d+):"],
+      [2, "^Subsection\\s+(\\d+\\.\\d+):"]
+    ],
+    "exclude_patterns": ["^\\s*#"],
+    "include_parent_content": false
+  }
+}
+```
+
+Example source text:
+
+```text
+Overview
+Section 1: Access
+Access rules text.
+Subsection 1.1: Passwords
+Password details.
+Section 2: Audit
+Audit trail text.
+```
+
+Observed output shape (trimmed):
+
+| content (trimmed) | level | path | metadata.title | parent_id |
+|---|---:|---|---|---|
+| `Overview` | 0 | `[]` | `ROOT` | `null` |
+| `Section 1: Access ...` | 1 | `[]` | `1` | `null` |
+| `Subsection 1.1: Passwords ...` | 2 | `["1"]` | `1.1` | `null` |
+| `Section 2: Audit ...` | 1 | `[]` | `2` | `null` |
+
+### DOCX + `regex_patterns` hierarchy behavior (`loader_type=docx`)
+
+`loader_params` fields relevant to regex handling:
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `regex_patterns` | array | no | `null` | accepted tuple/dict shapes: `[[level, pattern], ...]` or `{"level":..., "pattern": ...}` |
+| `exclude_patterns` | string[] | no | `[]` | forwarded to regex-based post-splitting stage |
+| `include_parent_content` | bool | no | `true` | forwarded to regex-based post-splitting stage |
+
+Heading detection order in DOCX loader:
+
+1. Word paragraph style (`Heading1`, `Heading2`, ...) is checked first.
+2. If style is not a heading, regex-based section detection is checked next.
+3. For docx regex heading detection, regex uses Python `match` (start of string), so anchors like `^` are recommended.
+
+Post-splitting behavior when `regex_patterns` is provided:
+
+- Text segments with `level > 0` are post-processed by regex hierarchy splitting.
+- Sub-segment remapping rules are applied:
+  - when sub-level is `0`: sub-segment inherits original segment `level`, `path`, and `parent_id`
+  - when sub-level is `> 0`: sub-segment path is prefixed with the original segment title context
+
+Runtime caveat for frontend tree building:
+
+- In `docx + regex_patterns` mode, `parent_id` can be less reliable for strict tree reconstruction.
+- Prefer deterministic rendering from `level + path + metadata.title`, and treat `parent_id` as optional linkage metadata.
+
+Example 1 (style-based headings):
+
+```json
+{
+  "loader_type": "docx",
+  "loader_params": {
+    "include_parent_content": true
+  }
+}
+```
+
+Example 2 (regex-only headings for non-styled paragraphs):
+
+```json
+{
+  "loader_type": "docx",
+  "loader_params": {
+    "regex_patterns": [
+      [1, "^Section\\s+(\\d+):"],
+      [2, "^Subsection\\s+(\\d+\\.\\d+):"]
+    ],
+    "exclude_patterns": ["^DRAFT\\b"],
+    "include_parent_content": false
+  }
+}
+```
 
 ## Segment item typing
 
@@ -753,6 +920,56 @@ Chunk output behavior:
   - `source_segment_item_id`
   - `chunk_index`
   - plus any metadata emitted by chunker
+
+### Regex Chunker Contract (`strategy=regex`)
+
+This section describes exact runtime behavior of `rag_lib.chunkers.regex.RegexSplitter` used by this API.
+
+`chunker_params` fields:
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `pattern` | string | yes | - | Python regex passed to `re.split` |
+| `chunk_size` | int | no | `4000` | accepted by API and forwarded to splitter constructor |
+| `chunk_overlap` | int | no | `200` | accepted by API and forwarded to splitter constructor |
+
+Regex split semantics:
+
+- Splitting uses Python `re.split(pattern, text)`.
+- Capturing groups in `pattern` are returned as standalone chunks.
+- Missing `pattern` returns `400 invalid_chunker_params`.
+
+Pattern examples:
+
+| Goal | Pattern | Example output notes |
+|---|---|---|
+| Delimiter drop (recommended) | `r"\.\s+"` | sentence delimiter removed from output chunks |
+| Keep section header at chunk start (recommended) | `r"(?=Section\s+\d+:)"` | section label remains at start of each chunk |
+| Preserve punctuation when splitting between sections (recommended) | `r"(?<=\.)\s+(?=Section\s+\d+:)"` | period kept on previous chunk |
+| Capturing-group caveat (generally avoid unless intended) | `r"(\.\s+)"` | delimiter capture appears as additional chunk entries |
+
+Example split contrast for `text = "Section 1: A. Section 2: B."`:
+
+- `pattern = r"(\.\s+)"` -> `["Section 1: A", ". ", "Section 2: B."]` (extra delimiter chunk)
+- `pattern = r"\.\s+"` -> `["Section 1: A", "Section 2: B."]` (recommended)
+
+Hierarchy propagation during regex chunking:
+
+- Chunking does not recompute hierarchy.
+- Each emitted chunk inherits source segment `parent_id`, `level`, and `path`.
+- Metadata always includes:
+  - `source_segment_item_id`
+  - `chunk_index`
+
+### Frontend Hierarchy Interpretation Rules
+
+> Use `level`, `path`, and `metadata.title` as primary hierarchy signals in UI.
+>
+> Treat `parent_id` as optional linkage metadata, not as the only tree key.
+>
+> Handle root/preamble segments (`level=0`) explicitly.
+>
+> Preserve server ordering via `position`.
 
 ## Versioning/active semantics for segments and chunks
 
@@ -1166,6 +1383,22 @@ All timestamps are RFC3339/ISO-8601 datetime strings.
 | `artifact_kind` | string |
 | `artifact_id` | string |
 | `restored_at` | datetime |
+
+## Advanced Capability Endpoints
+
+- `POST /api/v1/tables/summarize`
+- `POST /api/v1/projects/{project_id}/graph/builds`
+- `GET /api/v1/projects/{project_id}/graph/builds`
+- `GET /api/v1/graph_builds/{graph_build_id}`
+- `POST /api/v1/segment_sets/{segment_set_id}/enrich`
+- `POST /api/v1/segment_sets/{segment_set_id}/raptor`
+
+Feature flags:
+
+- `FEATURE_ENABLE_LLM`
+- `FEATURE_ENABLE_GRAPH`
+- `FEATURE_ENABLE_RAPTOR`
+- `FEATURE_ENABLE_MINER_U`
 
 ---
 
