@@ -36,7 +36,15 @@ class SegmentService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_from_document_version(self, version_id: str, loader_type: str, loader_params: dict, source_text: str | None = None) -> SegmentSetVersion:
+    async def create_from_document_version(
+        self,
+        version_id: str,
+        loader_type: str,
+        loader_params: dict,
+        split_strategy: str | None = None,
+        splitter_params: dict[str, Any] | None = None,
+        source_text: str | None = None,
+    ) -> SegmentSetVersion:
         doc_version = await self.session.get(DocumentVersion, version_id)
         if not doc_version or doc_version.is_deleted:
             raise api_error(404, "document_version_not_found", "Document version not found", {"version_id": version_id})
@@ -45,14 +53,21 @@ class SegmentService:
         if not document or document.is_deleted:
             raise api_error(404, "document_not_found", "Document not found", {"document_id": doc_version.document_id})
 
-        segments = await self._load_segments(document, loader_type, loader_params, source_text)
+        loaded_segments = await self._load_segments(document, loader_type, loader_params, source_text)
+        segments = self._apply_split_strategy(loaded_segments, split_strategy=split_strategy, splitter_params=splitter_params)
 
         return await self.create_derived_from_segments(
             project_id=document.project_id,
             document_version_id=version_id,
             parent_segment_set_version_id=None,
             segments=segments,
-            params={"loader_type": loader_type, "loader_params": loader_params, "source_text": bool(source_text)},
+            params={
+                "loader_type": loader_type,
+                "loader_params": loader_params,
+                "split_strategy": split_strategy,
+                "splitter_params": splitter_params or {},
+                "source_text": bool(source_text),
+            },
             input_refs={"document_version_id": version_id},
         )
 
@@ -131,6 +146,103 @@ class SegmentService:
         await self.session.refresh(segment_set)
         return segment_set
 
+    async def create_from_url(
+        self,
+        project_id: str,
+        loader_type: str,
+        loader_params: dict,
+        split_strategy: str | None = None,
+        splitter_params: dict[str, Any] | None = None,
+    ) -> SegmentSetVersion:
+        loader_type = loader_type.lower()
+        if loader_type not in {"web", "web_async"}:
+            raise api_error(400, "unsupported_loader", "URL ingestion supports only web|web_async", {"loader_type": loader_type})
+        url = loader_params.get("url")
+        if not url:
+            raise api_error(400, "invalid_loader_params", "loader_params.url is required for web loaders")
+
+        cleanup_config = self._build_web_cleanup_config(loader_params.get("cleanup_config"))
+        playwright_navigation_config = self._build_playwright_navigation_config(loader_params.get("playwright_navigation_config"))
+        playwright_extraction_config = self._build_playwright_extraction_config(loader_params.get("playwright_extraction_config"))
+
+        if loader_type == "web":
+            from rag_lib.loaders.web import WebLoader
+
+            loader = WebLoader(
+                url=url,
+                depth=int(loader_params.get("depth", 0)),
+                output_format=loader_params.get("output_format", "markdown"),
+                fetch_mode=loader_params.get("fetch_mode", "requests"),
+                crawl_scope=loader_params.get("crawl_scope", "same_host"),
+                allowed_domains=loader_params.get("allowed_domains"),
+                follow_download_links=bool(loader_params.get("follow_download_links", False)),
+                request_timeout_seconds=float(loader_params.get("request_timeout_seconds", 20.0)),
+                playwright_timeout_ms=int(loader_params.get("playwright_timeout_ms", 30000)),
+                playwright_headless=bool(loader_params.get("playwright_headless", True)),
+                ignore_https_errors=bool(loader_params.get("ignore_https_errors", False)),
+                user_agent=loader_params.get("user_agent", "rag-lib-webloader/1.0"),
+                max_pages=loader_params.get("max_pages"),
+                retry_attempts=int(loader_params.get("retry_attempts", 1)),
+                continue_on_error=bool(loader_params.get("continue_on_error", True)),
+                login_url=loader_params.get("login_url"),
+                cleanup_config=cleanup_config,
+                playwright_visible=loader_params.get("playwright_visible"),
+                playwright_extraction_config=playwright_extraction_config,
+                playwright_navigation_config=playwright_navigation_config,
+            )
+            documents = loader.load()
+            stats = loader.last_stats
+            errors = loader.last_errors
+        else:
+            from rag_lib.loaders.web_async import AsyncWebLoader
+
+            loader = AsyncWebLoader(
+                url=url,
+                depth=int(loader_params.get("depth", 0)),
+                output_format=loader_params.get("output_format", "markdown"),
+                fetch_mode=loader_params.get("fetch_mode", "requests"),
+                crawl_scope=loader_params.get("crawl_scope", "same_host"),
+                allowed_domains=loader_params.get("allowed_domains"),
+                follow_download_links=bool(loader_params.get("follow_download_links", False)),
+                request_timeout_seconds=float(loader_params.get("request_timeout_seconds", 20.0)),
+                playwright_timeout_ms=int(loader_params.get("playwright_timeout_ms", 30000)),
+                playwright_headless=bool(loader_params.get("playwright_headless", True)),
+                ignore_https_errors=bool(loader_params.get("ignore_https_errors", False)),
+                user_agent=loader_params.get("user_agent", "rag-lib-webloader/1.0"),
+                max_pages=loader_params.get("max_pages"),
+                retry_attempts=int(loader_params.get("retry_attempts", 1)),
+                max_concurrency=int(loader_params.get("max_concurrency", 5)),
+                continue_on_error=bool(loader_params.get("continue_on_error", True)),
+                login_url=loader_params.get("login_url"),
+                cleanup_config=cleanup_config,
+                playwright_visible=loader_params.get("playwright_visible"),
+                playwright_extraction_config=playwright_extraction_config,
+                playwright_navigation_config=playwright_navigation_config,
+            )
+            documents = await loader.load()
+            stats = loader.last_stats
+            errors = loader.last_errors
+
+        from rag_lib.core.domain import Segment
+
+        loaded_segments = [Segment(content=d.page_content, metadata=d.metadata or {}) for d in documents]
+        segments = self._apply_split_strategy(loaded_segments, split_strategy=split_strategy, splitter_params=splitter_params)
+        return await self.create_derived_from_segments(
+            project_id=project_id,
+            document_version_id=None,
+            parent_segment_set_version_id=None,
+            segments=segments,
+            params={
+                "loader_type": loader_type,
+                "loader_params": loader_params,
+                "split_strategy": split_strategy,
+                "splitter_params": splitter_params or {},
+                "web_stats": stats,
+                "web_errors": errors,
+            },
+            input_refs={"url": url},
+        )
+
     async def _load_segments(self, document: Document, loader_type: str, loader_params: dict, source_text: str | None) -> list:
         if source_text:
             from rag_lib.core.domain import Segment
@@ -153,7 +265,12 @@ class SegmentService:
                 summarizer = None
                 if loader_params.get("summarize_tables", False):
                     summarizer = self._build_pdf_summarizer(loader_params.get("table_summarizer", {}))
-                loader = PDFLoader(file_path=path, backend=loader_params.get("backend"), summarizer=summarizer)
+                loader = PDFLoader(
+                    file_path=path,
+                    parse_mode=loader_params.get("parse_mode", "text"),
+                    backend=loader_params.get("backend"),
+                    summarizer=summarizer,
+                )
             elif loader_type == "miner_u":
                 require_feature(
                     settings.feature_enable_miner_u,
@@ -165,46 +282,86 @@ class SegmentService:
                     require_module("magic_pdf", "miner_u", install_hint="Install optional dependency 'magic-pdf'.")
                     from rag_lib.loaders.miner_u import MinerULoader
 
-                    loader = MinerULoader(file_path=path)
+                    loader = MinerULoader(
+                        file_path=path,
+                        parse_mode=loader_params.get("parse_mode", "auto"),
+                        backend=loader_params.get("backend"),
+                        lang=loader_params.get("lang"),
+                        server_url=loader_params.get("server_url"),
+                        start_page=loader_params.get("start_page"),
+                        end_page=loader_params.get("end_page"),
+                        parse_formula=loader_params.get("parse_formula"),
+                        parse_table=loader_params.get("parse_table"),
+                        device=loader_params.get("device"),
+                        vram=loader_params.get("vram"),
+                        source=loader_params.get("source"),
+                        timeout_seconds=int(loader_params.get("timeout_seconds", 600)),
+                        keep_temp_artifacts=bool(loader_params.get("keep_temp_artifacts", False)),
+                    )
                 except Exception:
                     if not fallback:
                         raise
                     from rag_lib.loaders.pdf import PDFLoader
 
-                    loader = PDFLoader(file_path=path, backend=loader_params.get("backend"))
+                    fallback_parse_mode = loader_params.get("fallback_parse_mode")
+                    if not fallback_parse_mode:
+                        candidate = loader_params.get("parse_mode", "text")
+                        fallback_parse_mode = "text" if candidate in {"txt", "auto"} else candidate
+                    loader = PDFLoader(
+                        file_path=path,
+                        parse_mode=fallback_parse_mode,
+                        backend=loader_params.get("backend"),
+                    )
             elif loader_type == "docx":
-                from rag_lib.loaders.structured import StructuredLoader
+                from rag_lib.loaders.docx import DocXLoader
 
-                loader = StructuredLoader(
-                    file_path=path,
-                    regex_patterns=loader_params.get("regex_patterns"),
-                    exclude_patterns=loader_params.get("exclude_patterns"),
-                    include_parent_content=loader_params.get("include_parent_content", True),
-                )
+                loader = DocXLoader(file_path=path)
+            elif loader_type == "pymupdf":
+                from rag_lib.loaders.pymupdf import PyMuPDFLoader
+
+                loader = PyMuPDFLoader(file_path=path, output_format=loader_params.get("output_format", "markdown"))
+            elif loader_type == "html":
+                from rag_lib.loaders.html import HTMLLoader
+
+                loader = HTMLLoader(file_path=path, output_format=loader_params.get("output_format", "markdown"))
             elif loader_type == "csv":
                 from rag_lib.loaders.csv_excel import CSVLoader
 
-                loader = CSVLoader(file_path=path, chunk_size=loader_params.get("chunk_size"))
+                loader = CSVLoader(
+                    file_path=path,
+                    output_format=loader_params.get("output_format", "markdown"),
+                    delimiter=loader_params.get("delimiter"),
+                )
             elif loader_type == "excel":
                 from rag_lib.loaders.csv_excel import ExcelLoader
 
-                loader = ExcelLoader(file_path=path)
+                summarizer = None
+                if loader_params.get("summarize_tables", False):
+                    summarizer = self._build_pdf_summarizer(loader_params.get("table_summarizer", {}))
+                loader = ExcelLoader(
+                    file_path=path,
+                    output_format=loader_params.get("output_format", "markdown"),
+                    delimiter=loader_params.get("delimiter", ","),
+                    summarizer=summarizer,
+                )
             elif loader_type == "json":
                 from rag_lib.loaders.data_loaders import JsonLoader
 
-                loader = JsonLoader(file_path=path, jq_schema=loader_params.get("jq_schema", "."))
-            elif loader_type == "qa":
-                from rag_lib.loaders.data_loaders import QALoader
+                loader = JsonLoader(
+                    file_path=path,
+                    output_format=loader_params.get("output_format", "json"),
+                    schema=loader_params.get("schema", "."),
+                    schema_dialect=loader_params.get("schema_dialect", "dot_path"),
+                    ensure_ascii=bool(loader_params.get("ensure_ascii", False)),
+                )
+            elif loader_type == "text":
+                from rag_lib.loaders.data_loaders import TextLoader
 
-                loader = QALoader(file_path=path)
+                loader = TextLoader(file_path=path)
             elif loader_type == "table":
                 from rag_lib.loaders.data_loaders import TableLoader
 
-                loader = TableLoader(
-                    file_path=path,
-                    mode=loader_params.get("mode", "row"),
-                    group_by=loader_params.get("group_by"),
-                )
+                loader = TableLoader(file_path=path)
             elif loader_type == "regex":
                 from rag_lib.loaders.regex import RegexHierarchyLoader
 
@@ -229,15 +386,300 @@ class SegmentService:
                     exclude_patterns=loader_params.get("exclude_patterns"),
                     include_parent_content=loader_params.get("include_parent_content", False),
                 )
+            elif loader_type in {"web", "web_async"}:
+                raise api_error(
+                    400,
+                    "unsupported_loader",
+                    "web and web_async loaders require direct URL ingestion endpoint",
+                    {"loader_type": loader_type},
+                )
             else:
                 raise api_error(400, "unsupported_loader", "Unsupported loader type", {"loader_type": loader_type})
+            documents = loader.load()
+            if loader_type == "regex":
+                from rag_lib.chunkers.regex_hierarchy import RegexHierarchySplitter
 
-            return loader.load()
+                splitter = RegexHierarchySplitter(
+                    patterns=normalized_patterns,
+                    exclude_patterns=loader_params.get("exclude_patterns"),
+                    include_parent_content=loader_params.get("include_parent_content", False),
+                )
+                out = []
+                for doc in documents:
+                    out.extend(splitter.create_segments(doc.page_content, metadata=doc.metadata or {}))
+                return out
+
+            from rag_lib.core.domain import Segment
+
+            return [
+                Segment(
+                    content=d.page_content,
+                    metadata=d.metadata or {},
+                )
+                for d in documents
+            ]
         finally:
             try:
                 os.remove(path)
             except OSError:
                 pass
+
+    def _apply_split_strategy(
+        self,
+        segments: list[object],
+        *,
+        split_strategy: str | None,
+        splitter_params: dict[str, Any] | None,
+    ) -> list[object]:
+        if not split_strategy:
+            return segments
+
+        from rag_lib.core.domain import Segment
+
+        strategy = split_strategy.lower()
+        params = splitter_params or {}
+        splitter = self._build_splitter(strategy, params)
+        segment_output_strategies = {"regex_hierarchy", "markdown_hierarchy", "json", "qa", "csv_table", "html"}
+
+        out: list[Segment] = []
+        for source in segments:
+            source_content = str(getattr(source, "content", "") or "")
+            if not source_content.strip():
+                continue
+
+            source_metadata = dict(getattr(source, "metadata", {}) or {})
+            source_segment_id = str(getattr(source, "segment_id", None) or uuid.uuid4())
+
+            if strategy in segment_output_strategies and hasattr(splitter, "create_segments"):
+                split_items = splitter.create_segments(source_content, metadata=source_metadata)
+            else:
+                split_items = splitter.split_text(source_content)
+
+            for split_index, split_item in enumerate(split_items):
+                if hasattr(split_item, "content"):
+                    split_content = str(getattr(split_item, "content", "") or "")
+                    if not split_content.strip():
+                        continue
+
+                    split_metadata = {
+                        **source_metadata,
+                        **(getattr(split_item, "metadata", {}) or {}),
+                    }
+                    split_metadata.setdefault("source_segment_item_id", source_segment_id)
+                    out.append(
+                        Segment(
+                            segment_id=str(getattr(split_item, "segment_id", None) or uuid.uuid4()),
+                            content=split_content,
+                            metadata=split_metadata,
+                            parent_id=getattr(split_item, "parent_id", None),
+                            level=int(getattr(split_item, "level", 0) or 0),
+                            path=list(getattr(split_item, "path", []) or []),
+                            type=getattr(split_item, "type", "text"),
+                            original_format=getattr(split_item, "original_format", "text") or "text",
+                        )
+                    )
+                    continue
+
+                split_content = str(split_item or "")
+                if not split_content.strip():
+                    continue
+                out.append(
+                    Segment(
+                        segment_id=str(uuid.uuid4()),
+                        content=split_content,
+                        metadata={
+                            **source_metadata,
+                            "source_segment_item_id": source_segment_id,
+                            "split_chunk_index": split_index,
+                        },
+                        parent_id=source_segment_id,
+                    )
+                )
+
+        if not out:
+            raise api_error(
+                400,
+                "empty_segments_after_split",
+                "Split strategy produced no segments",
+                {"split_strategy": strategy, "splitter_params": params},
+            )
+        return out
+
+    def _build_splitter(self, strategy: str, params: dict):
+        if strategy == "recursive":
+            from rag_lib.chunkers.recursive import RecursiveCharacterTextSplitter
+
+            return RecursiveCharacterTextSplitter(
+                chunk_size=params.get("chunk_size", 4000),
+                chunk_overlap=params.get("chunk_overlap", 200),
+                separators=params.get("separators"),
+                keep_separator=bool(params.get("keep_separator", False)),
+                is_separator_regex=bool(params.get("is_separator_regex", False)),
+            )
+        if strategy == "token":
+            from rag_lib.chunkers.token import TokenTextSplitter
+
+            return TokenTextSplitter(
+                chunk_size=params.get("chunk_size", 4000),
+                chunk_overlap=params.get("chunk_overlap", 200),
+                model_name=params.get("model_name", "cl100k_base"),
+                encoding_name=params.get("encoding_name"),
+            )
+        if strategy == "sentence":
+            from rag_lib.chunkers.sentence import SentenceSplitter
+
+            return SentenceSplitter(
+                chunk_size=params.get("chunk_size", 4000),
+                chunk_overlap=params.get("chunk_overlap", 200),
+                language=params.get("language", "auto"),
+            )
+        if strategy == "regex":
+            from rag_lib.chunkers.regex import RegexSplitter
+
+            pattern = params.get("pattern")
+            if not pattern:
+                raise api_error(400, "invalid_splitter_params", "regex split strategy requires pattern")
+            return RegexSplitter(
+                pattern=pattern,
+                chunk_size=params.get("chunk_size", 4000),
+                chunk_overlap=params.get("chunk_overlap", 200),
+            )
+        if strategy == "markdown_table":
+            from rag_lib.chunkers.markdown_table import MarkdownTableSplitter
+
+            summarizer = self._build_table_summarizer(params.get("table_summarizer"))
+            return MarkdownTableSplitter(
+                split_table_rows=bool(params.get("split_table_rows", False)),
+                use_first_row_as_header=bool(params.get("use_first_row_as_header", True)),
+                max_rows_per_chunk=params.get("max_rows_per_chunk"),
+                max_chunk_size=params.get("max_chunk_size"),
+                summarizer=summarizer,
+                summarize_table=bool(params.get("summarize_table", True)),
+                summarize_chunks=bool(params.get("summarize_chunks", False)),
+                inject_summaries_into_content=bool(params.get("inject_summaries_into_content", False)),
+            )
+        if strategy == "regex_hierarchy":
+            from rag_lib.chunkers.regex_hierarchy import RegexHierarchySplitter
+
+            patterns = params.get("patterns")
+            if not patterns:
+                raise api_error(400, "invalid_splitter_params", "regex_hierarchy split strategy requires patterns")
+            return RegexHierarchySplitter(
+                patterns=patterns,
+                exclude_patterns=params.get("exclude_patterns"),
+                include_parent_content=params.get("include_parent_content", False),
+            )
+        if strategy == "markdown_hierarchy":
+            from rag_lib.chunkers.markdown_hierarchy import MarkdownHierarchySplitter
+
+            return MarkdownHierarchySplitter(
+                exclude_code_blocks=params.get("exclude_code_blocks", True),
+                include_parent_content=params.get("include_parent_content", False),
+            )
+        if strategy == "json":
+            from rag_lib.chunkers.json import JsonSplitter
+
+            return JsonSplitter(
+                schema=params.get("schema", "."),
+                schema_dialect=params.get("schema_dialect", "dot_path"),
+                ensure_ascii=bool(params.get("ensure_ascii", False)),
+                metadata_value_max_len=params.get("metadata_value_max_len", 256),
+            )
+        if strategy == "qa":
+            from rag_lib.chunkers.qa import QASplitter
+
+            return QASplitter()
+        if strategy == "csv_table":
+            from rag_lib.chunkers.csv_table import CSVTableSplitter
+
+            summarizer = self._build_table_summarizer(params.get("table_summarizer"))
+            return CSVTableSplitter(
+                max_rows_per_chunk=params.get("max_rows_per_chunk"),
+                max_chunk_size=params.get("max_chunk_size"),
+                delimiter=params.get("delimiter"),
+                use_first_row_as_header=params.get("use_first_row_as_header", True),
+                summarizer=summarizer,
+                summarize_table=params.get("summarize_table", True),
+                summarize_chunks=params.get("summarize_chunks", False),
+                inject_summaries_into_content=params.get("inject_summaries_into_content", False),
+            )
+        if strategy == "html":
+            from rag_lib.chunkers.html import HTMLSplitter
+
+            summarizer = self._build_table_summarizer(params.get("table_summarizer"))
+            return HTMLSplitter(
+                output_format=params.get("output_format", "markdown"),
+                split_table_rows=params.get("split_table_rows", False),
+                use_first_row_as_header=params.get("use_first_row_as_header", True),
+                max_rows_per_chunk=params.get("max_rows_per_chunk"),
+                max_chunk_size=params.get("max_chunk_size"),
+                summarizer=summarizer,
+                summarize_table=params.get("summarize_table", True),
+                summarize_chunks=params.get("summarize_chunks", False),
+                inject_summaries_into_content=params.get("inject_summaries_into_content", False),
+                include_parent_content=params.get("include_parent_content", False),
+            )
+        if strategy == "semantic":
+            from rag_lib.chunkers.semantic import SemanticChunker
+
+            provider = params.get("embedding_provider")
+            if provider == "mock":
+                from rag_lib.embeddings.mock import MockEmbeddings
+
+                embeddings = MockEmbeddings()
+            else:
+                from rag_lib.embeddings.factory import create_embeddings_model
+
+                embeddings = create_embeddings_model(
+                    provider=provider,
+                    model_name=params.get("embedding_model_name"),
+                )
+            return SemanticChunker(
+                embeddings=embeddings,
+                threshold=params.get("threshold"),
+                threshold_type=params.get("threshold_type", "fixed"),
+                language=params.get("language", "auto"),
+                percentile_threshold=params.get("percentile_threshold", 90),
+                local_percentile_window=params.get("local_percentile_window", 50),
+                local_min_samples=params.get("local_min_samples", 20),
+                local_fallback=params.get("local_fallback", "global"),
+                window_size=params.get("window_size", 1),
+                enable_debug=bool(params.get("enable_debug", False)),
+            )
+
+        raise api_error(400, "unsupported_split_strategy", "Unsupported segment split strategy", {"strategy": strategy})
+
+    def _build_table_summarizer(self, cfg: dict | None):
+        if not cfg:
+            return None
+
+        kind = str((cfg or {}).get("type", "mock")).lower()
+        if kind == "mock":
+            from rag_lib.summarizers.table import MockTableSummarizer
+
+            return MockTableSummarizer()
+
+        if kind != "llm":
+            raise api_error(400, "invalid_splitter_params", "table_summarizer.type must be mock or llm")
+
+        require_feature(
+            settings.feature_enable_llm,
+            "llm",
+            hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.",
+        )
+        from rag_lib.llm.factory import create_llm
+        from rag_lib.summarizers.table_llm import LLMTableSummarizer
+
+        try:
+            llm = create_llm(
+                provider=cfg.get("llm_provider") or settings.llm_provider_default,
+                model_name=cfg.get("model") or settings.llm_model_default,
+                temperature=settings.llm_temperature_default if cfg.get("temperature") is None else cfg.get("temperature"),
+                streaming=False,
+            )
+        except Exception as exc:
+            raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
+        return LLMTableSummarizer(llm=llm)
 
     def _build_pdf_summarizer(self, cfg: dict[str, Any]):
         kind = str((cfg or {}).get("type", "mock")).lower()
@@ -254,19 +696,79 @@ class SegmentService:
             "llm",
             hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.",
         )
-        from rag_lib.llm.factory import get_llm
+        from rag_lib.llm.factory import create_llm
         from rag_lib.summarizers.table_llm import LLMTableSummarizer
 
         try:
-            llm = get_llm(
+            llm = create_llm(
                 provider=cfg.get("llm_provider") or settings.llm_provider_default,
-                model=cfg.get("model") or settings.llm_model_default,
+                model_name=cfg.get("model") or settings.llm_model_default,
                 temperature=settings.llm_temperature_default if cfg.get("temperature") is None else cfg.get("temperature"),
                 streaming=False,
             )
         except Exception as exc:
             raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
         return LLMTableSummarizer(llm=llm)
+
+    def _build_web_cleanup_config(self, cfg: Any):
+        if cfg is None:
+            return None
+        if not isinstance(cfg, dict):
+            return cfg
+        try:
+            from rag_lib.loaders.web_common import WebCleanupConfig
+
+            return WebCleanupConfig(
+                ignored_classes=tuple(cfg.get("ignored_classes", ()) or ()),
+                non_recursive_classes=tuple(cfg.get("non_recursive_classes", ()) or ()),
+                navigation_classes=tuple(cfg.get("navigation_classes", ()) or ()),
+                navigation_styles=tuple(cfg.get("navigation_styles", ()) or ()),
+                navigation_texts=tuple(cfg.get("navigation_texts", ()) or ()),
+                duplicate_tags=tuple(cfg.get("duplicate_tags", ()) or ()),
+            )
+        except Exception as exc:
+            raise api_error(400, "invalid_loader_params", "Invalid cleanup_config payload", {"error": str(exc)}) from exc
+
+    def _build_playwright_navigation_config(self, cfg: Any):
+        if cfg is None:
+            return None
+        if not isinstance(cfg, dict):
+            return cfg
+        try:
+            from rag_lib.loaders.web_playwright_extractors import PlaywrightNavigationConfig
+
+            return PlaywrightNavigationConfig(**cfg)
+        except Exception as exc:
+            raise api_error(
+                400,
+                "invalid_loader_params",
+                "Invalid playwright_navigation_config payload",
+                {"error": str(exc)},
+            ) from exc
+
+    def _build_playwright_extraction_config(self, cfg: Any):
+        if cfg is None:
+            return None
+        if not isinstance(cfg, dict):
+            return cfg
+        try:
+            from rag_lib.loaders.web_playwright_extractors import (
+                PlaywrightExtractionConfig,
+                PlaywrightProfileConfig,
+            )
+
+            payload = dict(cfg)
+            profiles = payload.get("profiles")
+            if isinstance(profiles, list):
+                payload["profiles"] = tuple(PlaywrightProfileConfig(**item) for item in profiles)
+            return PlaywrightExtractionConfig(**payload)
+        except Exception as exc:
+            raise api_error(
+                400,
+                "invalid_loader_params",
+                "Invalid playwright_extraction_config payload",
+                {"error": str(exc)},
+            ) from exc
 
     async def list_segment_sets(self, project_id: str) -> list[SegmentSetVersion]:
         stmt = (

@@ -25,6 +25,21 @@ async def chunk_segment_set(
     )
 
 
+@router.post("/chunk_sets/{chunk_set_id}/chunk", response_model=ChunkSetWithItems)
+async def chunk_chunk_set(
+    chunk_set_id: str,
+    request: ChunkFromSegmentRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    svc = ChunkService(session)
+    row = await svc.create_from_chunk_set(chunk_set_id, request.strategy, request.chunker_params)
+    items = await svc.list_items(row.chunk_set_version_id)
+    return ChunkSetWithItems(
+        chunk_set=chunk_set_out(row, total_items=len(items)),
+        items=[chunk_item_out(i) for i in items],
+    )
+
+
 @router.get("/projects/{project_id}/chunk_sets")
 async def list_chunk_sets(
     project_id: str,

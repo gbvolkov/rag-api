@@ -1,4 +1,33 @@
-version: '3.9'
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/rag_api
+  REDIS_URL: redis://redis:6379/0
+  OBJECT_STORE_BACKEND: minio
+  OBJECT_STORE_BUCKET: rag-api-artifacts
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: minioadmin
+  MINIO_SECRET_KEY: minioadmin
+  MINIO_SECURE: "false"
+  QDRANT_URL: http://qdrant:6333
+  DEFAULT_INDEX_PROVIDER: qdrant
+  GRAPH_BACKEND_DEFAULT: neo4j
+  NEO4J_URI: bolt://neo4j:7687
+  NEO4J_USER: neo4j
+  NEO4J_PASSWORD: neo4jpassword
+  NEO4J_DATABASE: neo4j
+  HF_HOME: /cache/huggingface
+  TRANSFORMERS_CACHE: /cache/huggingface/transformers
+  SENTENCE_TRANSFORMERS_HOME: /cache/sentence-transformers
+
+x-app-depends-on: &app-depends-on
+  - postgres
+  - redis
+  - minio
+  - qdrant
+  - neo4j
+
+x-app-cache-volumes: &app-cache-volumes
+  - hf_cache:/cache/huggingface
+  - sentence_transformers_cache:/cache/sentence-transformers
 
 services:
   postgres:
@@ -47,60 +76,27 @@ services:
       - neo4j_data:/data
 
   api:
-    build: .
-    depends_on:
-      - postgres
-      - redis
-      - minio
-      - qdrant
-      - neo4j
-    environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/rag_api
-      REDIS_URL: redis://redis:6379/0
-      OBJECT_STORE_BACKEND: minio
-      OBJECT_STORE_BUCKET: rag-api-artifacts
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_SECURE: "false"
-      QDRANT_URL: http://qdrant:6333
-      DEFAULT_INDEX_PROVIDER: qdrant
-      GRAPH_BACKEND_DEFAULT: neo4j
-      NEO4J_URI: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: neo4jpassword
-      NEO4J_DATABASE: neo4j
+    image: rag-api:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on: *app-depends-on
+    environment: *app-environment
+    volumes: *app-cache-volumes
     ports:
       - "8000:8000"
 
   worker:
-    build: .
+    image: rag-api:dev
     command: celery -A app.workers.celery_app.celery_app worker -l INFO
-    depends_on:
-      - postgres
-      - redis
-      - minio
-      - qdrant
-      - neo4j
-    environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/rag_api
-      REDIS_URL: redis://redis:6379/0
-      OBJECT_STORE_BACKEND: minio
-      OBJECT_STORE_BUCKET: rag-api-artifacts
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_SECURE: "false"
-      QDRANT_URL: http://qdrant:6333
-      DEFAULT_INDEX_PROVIDER: qdrant
-      GRAPH_BACKEND_DEFAULT: neo4j
-      NEO4J_URI: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: neo4jpassword
-      NEO4J_DATABASE: neo4j
+    depends_on: *app-depends-on
+    environment: *app-environment
+    volumes: *app-cache-volumes
 
 volumes:
   postgres_data:
   minio_data:
   qdrant_data:
   neo4j_data:
+  hf_cache:
+  sentence_transformers_cache:

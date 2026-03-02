@@ -1,0 +1,53 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  api:
+    image: rag-api:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - qdrant
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql+psycopg://postgres:postgres@host.docker.internal:5432/rag_api}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://host.docker.internal:6379/0}
+      OBJECT_STORE_BACKEND: ${DOCKER_OBJECT_STORE_BACKEND:-minio}
+      OBJECT_STORE_BUCKET: ${DOCKER_OBJECT_STORE_BUCKET:-rag-api-artifacts}
+      LOCAL_OBJECT_STORE_PATH: ${DOCKER_LOCAL_OBJECT_STORE_PATH:-./artifacts_examples}
+      MINIO_ENDPOINT: ${DOCKER_MINIO_ENDPOINT:-host.docker.internal:9000}
+      MINIO_ACCESS_KEY: ${DOCKER_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${DOCKER_MINIO_SECRET_KEY:-minioadmin}
+      MINIO_SECURE: ${DOCKER_MINIO_SECURE:-false}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${DOCKER_QDRANT_API_KEY:-}
+      DEFAULT_INDEX_PROVIDER: qdrant
+      FEATURE_ENABLE_GRAPH: ${DOCKER_FEATURE_ENABLE_GRAPH:-true}
+      FEATURE_ENABLE_RAPTOR: ${DOCKER_FEATURE_ENABLE_RAPTOR:-true}
+      FEATURE_ENABLE_MINER_U: ${DOCKER_FEATURE_ENABLE_MINER_U:-true}
+      FEATURE_ENABLE_LLM: ${DOCKER_FEATURE_ENABLE_LLM:-true}
+      GRAPH_BACKEND_DEFAULT: ${DOCKER_GRAPH_BACKEND_DEFAULT:-networkx}
+      WORKER_ENABLED: ${DOCKER_WORKER_ENABLED:-false}
+      OPENAI_API_KEY: ${DOCKER_OPENAI_API_KEY:-}
+      MISTRAL_API_KEY: ${DOCKER_MISTRAL_API_KEY:-}
+      YA_API_KEY: ${DOCKER_YA_API_KEY:-}
+      YA_FOLDER_ID: ${DOCKER_YA_FOLDER_ID:-}
+      HF_HOME: /cache/huggingface
+      TRANSFORMERS_CACHE: /cache/huggingface/transformers
+      SENTENCE_TRANSFORMERS_HOME: /cache/sentence-transformers
+    volumes:
+      - hf_cache:/cache/huggingface
+      - sentence_transformers_cache:/cache/sentence-transformers
+
+volumes:
+  qdrant_data:
+  hf_cache:
+  sentence_transformers_cache:

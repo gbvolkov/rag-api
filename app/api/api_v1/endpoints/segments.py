@@ -9,9 +9,12 @@ from app.schemas.segment import (
     ClonePatchSegmentRequest,
     CreateSegmentsRequest,
     EnrichSegmentsRequest,
+    RaptorRunOut,
     RaptorSegmentsRequest,
     SegmentSetWithItems,
 )
+from app.models import RaptorRun
+from sqlalchemy import select
 from app.services.index_service import IndexService
 from app.services.segment_service import SegmentService
 from app.services.segment_transform_service import SegmentTransformService
@@ -28,7 +31,32 @@ async def create_segments(version_id: str, request: CreateSegmentsRequest, sessi
         version_id=version_id,
         loader_type=request.loader_type,
         loader_params=request.loader_params,
+        split_strategy=request.split_strategy,
+        splitter_params=request.splitter_params,
         source_text=request.source_text,
+    )
+    items = await svc.list_items(segment_set.segment_set_version_id)
+    total = len(items)
+    return SegmentSetWithItems(
+        segment_set=segment_set_out(segment_set, total_items=total),
+        items=[segment_item_out(i) for i in items],
+    )
+
+
+@router.post("/projects/{project_id}/segments/url", response_model=SegmentSetWithItems)
+async def create_segments_from_url(
+    project_id: str,
+    request: CreateSegmentsRequest,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
+    svc = SegmentService(session)
+    segment_set = await svc.create_from_url(
+        project_id=project_id,
+        loader_type=request.loader_type,
+        loader_params=request.loader_params,
+        split_strategy=request.split_strategy,
+        splitter_params=request.splitter_params,
     )
     items = await svc.list_items(segment_set.segment_set_version_id)
     total = len(items)
@@ -174,3 +202,30 @@ async def raptor_segment_set(
         "segment_set": segment_set_out(row, total_items=len(items)).model_dump(),
         "items": [segment_item_out(i).model_dump() for i in items],
     }
+
+
+@router.get("/projects/{project_id}/raptor_runs", response_model=list[RaptorRunOut])
+async def list_raptor_runs(
+    project_id: str,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
+    rows = (
+        await session.execute(
+            select(RaptorRun).where(RaptorRun.project_id == project_id).order_by(RaptorRun.created_at.desc())
+        )
+    ).scalars().all()
+    return [
+        RaptorRunOut(
+            raptor_run_id=r.raptor_run_id,
+            project_id=r.project_id,
+            source_segment_set_version_id=r.source_segment_set_version_id,
+            output_segment_set_version_id=r.output_segment_set_version_id,
+            params=r.params_json or {},
+            result=r.result_json or {},
+            artifact_uri=r.artifact_uri,
+            status=r.status,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]

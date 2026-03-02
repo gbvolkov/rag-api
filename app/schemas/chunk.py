@@ -35,7 +35,10 @@ class ChunkSetOut(BaseModel):
 class ChunkFromSegmentRequest(BaseModel):
     strategy: str = Field(
         default="recursive",
-        description="Chunk strategy. Supported: recursive|token|sentence|regex|markdown_table|semantic.",
+        description=(
+            "Chunk strategy. Supported: recursive|token|sentence|regex|regex_hierarchy|markdown_hierarchy|"
+            "json|qa|markdown_table|csv_table|html|semantic."
+        ),
         examples=["regex", "recursive"],
     )
     chunker_params: dict[str, Any] = Field(

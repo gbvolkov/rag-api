@@ -51,7 +51,13 @@ async def get_index(index_id: str, session: AsyncSession = Depends(get_session))
 @router.post("/indexes/{index_id}/builds")
 async def create_index_build(index_id: str, request: CreateIndexBuildRequest, session: AsyncSession = Depends(get_session)):
     svc = IndexService(session)
-    build = await svc.create_build(index_id, request.chunk_set_version_id, request.params, status="queued")
+    build = await svc.create_build(
+        index_id,
+        request.chunk_set_version_id,
+        request.params,
+        doc_store=request.doc_store.model_dump() if request.doc_store else None,
+        status="queued",
+    )
 
     if request.execution_mode == "async":
         job = await svc.create_job(build.project_id, "index_build", {"build_id": build.build_id, "index_id": build.index_id})

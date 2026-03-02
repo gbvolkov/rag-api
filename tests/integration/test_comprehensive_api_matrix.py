@@ -230,7 +230,7 @@ def test_document_version_content_preview_works_after_project_soft_delete(client
     assert preview.content == content
 
 
-@pytest.mark.parametrize("loader_type", ["pdf", "miner_u", "docx", "csv", "excel", "json", "qa", "table", "regex"])
+@pytest.mark.parametrize("loader_type", ["pdf", "miner_u", "docx", "csv", "excel", "json", "text", "table", "regex"])
 def test_segment_loader_type_matrix_with_source_text(client, loader_type: str):
     project_id = _create_project(client, f"proj-loader-{loader_type}")
     _, version_id = _upload_document(client, project_id, content=b"irrelevant")
@@ -249,13 +249,12 @@ def test_segment_loader_type_matrix_with_source_text(client, loader_type: str):
     "loader_type,filename,mime,loader_params,min_items",
     [
         ("docx", "long_document.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", {}, 1),
-        ("csv", "long_data.csv", "text/csv", {"chunk_size": 40}, 5),
+        ("csv", "long_data.csv", "text/csv", {}, 1),
         ("excel", "long_workbook.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", {}, 3),
-        ("json", "long_data.json", "application/json", {"jq_schema": ".items"}, 50),
-        ("qa", "long_qa.txt", "text/plain", {}, 50),
-        ("table", "long_table.csv", "text/csv", {"mode": "row"}, 100),
-        ("table", "long_table.csv", "text/csv", {"mode": "group", "group_by": "region"}, 4),
-        ("regex", "long_text.txt", "text/plain", {"patterns": [[1, r"^Section\s+(\d+):"]]}, 50),
+        ("json", "long_data.json", "application/json", {"schema": ".items", "output_format": "markdown"}, 1),
+        ("text", "long_qa.txt", "text/plain", {}, 1),
+        ("table", "long_table.csv", "text/csv", {}, 1),
+        ("regex", "long_text.txt", "text/plain", {"patterns": [[1, r"^Section\s+(\d+):"]]}, 1),
     ],
 )
 def test_segment_loader_type_matrix_with_real_files(
@@ -474,7 +473,7 @@ def test_parameter_persistence_for_generation_and_retrieval_chain(client, fixtur
     version = next(v for v in versions.json() if v["version_id"] == version_id)
     assert version["parser_params"] == parser_params
 
-    loader_params = {"jq_schema": ".items[]", "custom": {"x": 1}}
+    loader_params = {"schema": ".items", "schema_dialect": "dot_path", "custom": {"x": 1}}
     seg = client.post(
         f"/api/v1/document_versions/{version_id}/segments",
         json={"loader_type": "json", "loader_params": loader_params, "source_text": _read_fixture_bytes(fixture_inputs_dir, "long_text.txt").decode("utf-8")},

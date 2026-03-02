@@ -15,7 +15,7 @@ from app.models import (
 from app.schemas.chunk import ChunkItemOut, ChunkSetOut
 from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.schemas.graph import GraphBuildOut
-from app.schemas.indexing import IndexBuildOut, IndexOut
+from app.schemas.indexing import IndexBuildDocStoreOut, IndexBuildOut, IndexOut
 from app.schemas.job import JobOut
 from app.schemas.project import ProjectOut, ProjectSettings
 from app.schemas.retrieval import RetrievalRunOut
@@ -147,6 +147,13 @@ def index_out(m: Index) -> IndexOut:
 
 
 def index_build_out(m: IndexBuild) -> IndexBuildOut:
+    raw_doc_store = (m.input_refs_json or {}).get("doc_store")
+    doc_store = None
+    if isinstance(raw_doc_store, dict):
+        try:
+            doc_store = IndexBuildDocStoreOut(**raw_doc_store)
+        except Exception:
+            doc_store = None
     return IndexBuildOut(
         build_id=m.build_id,
         index_id=m.index_id,
@@ -155,6 +162,7 @@ def index_build_out(m: IndexBuild) -> IndexBuildOut:
         params=m.params_json or {},
         input_refs=m.input_refs_json or {},
         artifact_uri=m.artifact_uri,
+        doc_store=doc_store,
         status=m.status,
         producer_type=m.producer_type,
         producer_version=m.producer_version,

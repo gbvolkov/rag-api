@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models import IngestionRun
 from app.schemas.pipeline import PipelineRequestMeta
 from app.services.chunk_service import ChunkService
 from app.services.document_service import DocumentService
@@ -46,6 +47,24 @@ class PipelineService:
                 status="queued",
             )
             index_build = await self.indexes.run_build(build.build_id)
+
+        self.session.add(
+            IngestionRun(
+                project_id=project_id,
+                run_type="pipeline_file",
+                source_type="document",
+                source_id=doc_version.version_id,
+                params_json=request.model_dump(mode="json"),
+                result_json={
+                    "document_version_id": doc_version.version_id,
+                    "segment_set_version_id": segment_set.segment_set_version_id,
+                    "chunk_set_version_id": chunk_set.chunk_set_version_id,
+                    "index_build_id": index_build.build_id if index_build else None,
+                },
+                status="succeeded",
+            )
+        )
+        await self.session.commit()
 
         return {
             "document": document,

@@ -23,17 +23,16 @@ class TableService:
             hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.",
         )
 
-        from rag_lib.llm.factory import get_llm
+        from rag_lib.llm.factory import create_llm
         from rag_lib.summarizers.table_llm import LLMTableSummarizer
 
         try:
-            llm = get_llm(
+            llm = create_llm(
                 provider=summarizer.llm_provider or settings.llm_provider_default,
-                model=summarizer.model or settings.llm_model_default,
+                model_name=summarizer.model or settings.llm_model_default,
                 temperature=settings.llm_temperature_default if summarizer.temperature is None else summarizer.temperature,
                 streaming=False,
             )
         except Exception as exc:
             raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
         return LLMTableSummarizer(llm=llm).summarize(markdown_table)
-

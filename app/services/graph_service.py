@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.capabilities import require_feature
 from app.core.config import settings
 from app.core.errors import api_error
-from app.models import ChunkItem, ChunkSetVersion, GraphBuild, SegmentItem, SegmentSetVersion
+from app.models import ChunkItem, ChunkSetVersion, GraphBuild, GraphQueryRun, SegmentItem, SegmentSetVersion
 from app.services.graph_store_factory import create_graph_store
 from app.storage.keys import uri_to_key
 from app.storage.object_store import object_store
@@ -185,56 +185,71 @@ class GraphService:
     async def query_graph(
         self,
         graph_build_id: str,
+        project_id: str,
         query: str,
         *,
-        mode: str = "local",
-        search_depth: int = 1,
+        mode: str = "hybrid",
+        graph_query_config: dict[str, Any] | None = None,
     ) -> list[LCDocument]:
         row = await self.get_build(graph_build_id)
+        if row.project_id != project_id:
+            raise api_error(404, "graph_build_not_found", "Graph build not found", {"graph_build_id": graph_build_id})
         if row.status != "succeeded":
             raise api_error(409, "graph_build_not_ready", "Graph build is not ready", {"graph_build_id": row.graph_build_id})
-        if mode not in {"local", "global"}:
-            raise api_error(400, "invalid_graph_mode", "mode must be local or global", {"mode": mode})
-
-        if mode == "global":
-            return self._query_global_from_manifest(row, query)
 
         store = self._load_store_for_build(row)
+        vector_store = await self._build_ephemeral_vector_store(row)
         try:
-            from rag_lib.retrieval.graph_retriever import GraphRetriever
+            from rag_lib.retrieval.graph_retriever import GraphQueryConfig, GraphRetriever
 
-            retriever = GraphRetriever(store=store, mode="local", search_depth=search_depth)
+            cfg = GraphQueryConfig(
+                mode=mode,
+                **(graph_query_config or {}),
+            )
+            llm = None
+            if cfg.enable_keyword_extraction:
+                llm = self._get_llm(provider=None, model=None, temperature=None)
+            retriever = GraphRetriever(
+                graph_store=store,
+                vector_store=vector_store,
+                config=cfg,
+                llm=llm,
+            )
             docs = await retriever.ainvoke(query)
+            payload = {
+                "items": [
+                    {"page_content": d.page_content, "metadata": d.metadata or {}}
+                    for d in (docs or [])
+                ]
+            }
+            key = f"projects/{row.project_id}/graph_query_runs/{row.graph_build_id}/{hash(query)}.json"
+            uri = object_store.put_json(key, payload)
+            run = GraphQueryRun(
+                project_id=row.project_id,
+                graph_build_id=row.graph_build_id,
+                query=query,
+                mode=mode,
+                config_json=graph_query_config or {},
+                result_json=payload,
+                artifact_uri=uri,
+            )
+            self.session.add(run)
+            await self.session.commit()
             return list(docs or [])
+        except Exception as exc:
+            raise api_error(400, "graph_query_failed", "Graph query failed", {"error": str(exc)}) from exc
         finally:
             close = getattr(store, "close", None)
             if callable(close):
                 close()
 
-    def _query_global_from_manifest(self, row: GraphBuild, query: str) -> list[LCDocument]:
-        if not row.artifact_uri:
-            return []
-        key = uri_to_key(row.artifact_uri)
-        payload = object_store.get_json(key)
-        summaries = payload.get("community_summaries", [])
-        docs = [
-            LCDocument(
-                page_content=s.get("content", ""),
-                metadata={"source": "graph_community_summary", **(s.get("metadata") or {})},
-            )
-            for s in summaries
-            if s.get("content")
-        ]
-        if not docs:
-            return []
-        try:
-            from rag_lib.retrieval.retrievers import get_bm25_retriever
+    async def _build_ephemeral_vector_store(self, row: GraphBuild):
+        from langchain_community.vectorstores import FAISS
+        from rag_lib.embeddings.mock import MockEmbeddings
 
-            retriever = get_bm25_retriever(docs, k=min(10, len(docs)))
-            return list(retriever.invoke(query))
-        except Exception:
-            q = query.lower()
-            return [d for d in docs if q in d.page_content.lower()][:10]
+        segments = await self._load_source_segments(row.project_id, row.source_type, row.source_id)
+        docs = [seg.to_langchain() for seg in segments]
+        return FAISS.from_documents(docs, MockEmbeddings())
 
     def _load_store_for_build(self, row: GraphBuild):
         store, backend = create_graph_store(row.backend)
@@ -321,12 +336,12 @@ class GraphService:
             "llm",
             hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.",
         )
-        from rag_lib.llm.factory import get_llm
+        from rag_lib.llm.factory import create_llm
 
         try:
-            return get_llm(
+            return create_llm(
                 provider=provider or settings.llm_provider_default,
-                model=model or settings.llm_model_default,
+                model_name=model or settings.llm_model_default,
                 temperature=settings.llm_temperature_default if temperature is None else temperature,
                 streaming=False,
             )

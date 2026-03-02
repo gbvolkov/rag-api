@@ -45,18 +45,17 @@ class SegmentSetOut(BaseModel):
 class CreateSegmentsRequest(BaseModel):
     loader_type: str = Field(
         description=(
-            "Segment loader type. Supported: pdf|miner_u|docx|csv|excel|json|qa|table|regex. "
-            "Regex and DOCX regex_patterns details are documented in README sections "
-            "'Regex Loader Contract' and 'DOCX + regex_patterns hierarchy behavior'."
+            "Segment loader type. Supported: pdf|miner_u|pymupdf|docx|html|csv|excel|json|text|table|regex|web|web_async."
         ),
-        examples=["regex", "docx", "pdf"],
+        examples=["regex", "docx", "pdf", "text"],
     )
     loader_params: dict[str, Any] = Field(
         default_factory=dict,
         description=(
             "Loader-specific options. "
             "Regex loader expects patterns/exclude_patterns/include_parent_content. "
-            "DOCX loader may use regex_patterns for additional hierarchy splitting."
+            "JSON loader uses schema/schema_dialect/output_format. "
+            "web/web_async loaders must be used via URL ingestion endpoint."
         ),
         examples=[
             {
@@ -74,17 +73,33 @@ class CreateSegmentsRequest(BaseModel):
                 ]
             },
             {
-                "regex_patterns": [[2, "^Subsection\\s+(\\d+\\.\\d+):"]],
-                "exclude_patterns": ["^DRAFT\\b"],
-                "include_parent_content": True,
+                "schema": ".items",
+                "schema_dialect": "dot_path",
+                "output_format": "markdown",
             },
         ],
+    )
+    split_strategy: str | None = Field(
+        default=None,
+        description=(
+            "Optional logical split strategy applied after loader output. "
+            "Supported: recursive|token|sentence|regex|regex_hierarchy|markdown_hierarchy|"
+            "json|qa|markdown_table|csv_table|html|semantic."
+        ),
+        examples=["regex", "markdown_hierarchy"],
+    )
+    splitter_params: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Split-strategy-specific options. For split_strategy=regex, 'pattern' is required."
+        ),
+        examples=[{"pattern": "(?=##Term:)"}],
     )
     source_text: str | None = Field(
         default=None,
         description=(
-            "Optional direct text input. When provided, loader_type/loader_params are bypassed and "
-            "a single text segment is emitted."
+            "Optional direct text input that replaces file loading. "
+            "If split_strategy is set, the provided text is split accordingly."
         ),
         examples=["Inline text to segment without reading the uploaded file."],
     )
@@ -118,3 +133,15 @@ class RaptorSegmentsRequest(BaseModel):
     embedding_provider: str = "openai"
     embedding_model_name: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
+
+
+class RaptorRunOut(BaseModel):
+    raptor_run_id: str
+    project_id: str
+    source_segment_set_version_id: str
+    output_segment_set_version_id: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] = Field(default_factory=dict)
+    artifact_uri: str | None = None
+    status: str
+    created_at: datetime

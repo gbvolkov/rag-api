@@ -7,6 +7,7 @@ surface that SQLAlchemy's sqlite+aiosqlite dialect expects.
 from __future__ import annotations
 
 import sqlite3
+from types import SimpleNamespace
 from collections.abc import Iterable
 
 DatabaseError = sqlite3.DatabaseError
@@ -62,7 +63,8 @@ class Cursor:
 class Connection:
     def __init__(self, conn: sqlite3.Connection):
         self._conn = conn
-        self.daemon = True
+        # SQLAlchemy's sqlite+aiosqlite dialect checks this for aiosqlite>=0.22.
+        self._thread = SimpleNamespace(daemon=True)
 
     def __await__(self):
         async def _return_self():
@@ -72,6 +74,24 @@ class Connection:
 
     async def cursor(self):
         return Cursor(self._conn.cursor())
+
+    async def execute(self, operation, parameters=None):
+        cursor = self._conn.cursor()
+        if parameters is None:
+            cursor.execute(operation)
+        else:
+            cursor.execute(operation, parameters)
+        return Cursor(cursor)
+
+    async def executemany(self, operation, seq_of_parameters: Iterable):
+        cursor = self._conn.cursor()
+        cursor.executemany(operation, seq_of_parameters)
+        return Cursor(cursor)
+
+    async def executescript(self, script: str):
+        cursor = self._conn.cursor()
+        cursor.executescript(script)
+        return Cursor(cursor)
 
     async def commit(self):
         self._conn.commit()
@@ -84,6 +104,10 @@ class Connection:
 
     async def create_function(self, *args, **kwargs):
         self._conn.create_function(*args, **kwargs)
+
+    def stop(self):
+        # Compatibility stub for newer aiosqlite APIs.
+        return None
 
     def __getattr__(self, item):
         return getattr(self._conn, item)

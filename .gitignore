@@ -55,3 +55,4 @@ test.db
 test.db-journal
 pytest-cache-files-*/
 artifacts/
+artifacts_examples/

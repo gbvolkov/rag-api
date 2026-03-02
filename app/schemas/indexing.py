@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -26,9 +26,23 @@ class IndexOut(BaseModel):
     updated_at: datetime
 
 
+class IndexBuildDocStoreConfig(BaseModel):
+    source: Literal["auto", "segment_set", "parent_chunk_set"] = "auto"
+    id_key: str = "parent_id"
+
+
+class IndexBuildDocStoreOut(BaseModel):
+    source: Literal["segment_set", "parent_chunk_set"]
+    source_id: str
+    id_key: str
+    artifact_uri: str
+    total_items: int
+
+
 class CreateIndexBuildRequest(BaseModel):
     chunk_set_version_id: str
     params: dict[str, Any] = Field(default_factory=dict)
+    doc_store: IndexBuildDocStoreConfig | None = None
     execution_mode: str = "sync"
 
 
@@ -40,6 +54,7 @@ class IndexBuildOut(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict)
     input_refs: dict[str, Any] = Field(default_factory=dict)
     artifact_uri: str | None = None
+    doc_store: IndexBuildDocStoreOut | None = None
     status: str
     producer_type: str
     producer_version: str

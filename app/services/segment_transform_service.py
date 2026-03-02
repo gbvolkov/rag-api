@@ -5,8 +5,10 @@ from typing import Any
 from app.core.capabilities import require_feature, require_module
 from app.core.config import settings
 from app.core.errors import api_error
+from app.models import RaptorRun
 from app.models import SegmentItem
 from app.services.segment_service import SegmentService
+from app.storage.object_store import object_store
 
 
 class SegmentTransformService:
@@ -79,13 +81,12 @@ class SegmentTransformService:
 
         segments = self._rows_to_segments(rows)
         llm = self._get_llm(llm_provider, llm_model, llm_temperature)
-        from rag_lib.embeddings.factory import get_embeddings_model
         from rag_lib.processors.raptor import RaptorProcessor
 
-        embeddings = get_embeddings_model(provider=embedding_provider, model_name=embedding_model_name)
+        embeddings = self._get_embeddings(embedding_provider, embedding_model_name)
         processor = RaptorProcessor(llm=llm, embeddings=embeddings, max_levels=max_levels)
         transformed = processor.process_segments(segments)
-        return await self.segment_service.create_derived_from_segments(
+        output = await self.segment_service.create_derived_from_segments(
             project_id=base_set.project_id,
             document_version_id=base_set.document_version_id,
             parent_segment_set_version_id=base_set.segment_set_version_id,
@@ -102,6 +103,29 @@ class SegmentTransformService:
             },
             input_refs={"parent_segment_set_version_id": base_set.segment_set_version_id},
         )
+        manifest = {
+            "project_id": base_set.project_id,
+            "source_segment_set_version_id": base_set.segment_set_version_id,
+            "output_segment_set_version_id": output.segment_set_version_id,
+            "max_levels": max_levels,
+            "embedding_provider": embedding_provider,
+            "embedding_model_name": embedding_model_name,
+            "items_count": len(transformed),
+        }
+        key = f"projects/{base_set.project_id}/raptor_runs/{output.segment_set_version_id}/manifest.json"
+        uri = object_store.put_json(key, manifest)
+        run = RaptorRun(
+            project_id=base_set.project_id,
+            source_segment_set_version_id=base_set.segment_set_version_id,
+            output_segment_set_version_id=output.segment_set_version_id,
+            params_json=manifest,
+            result_json={"segment_set_version_id": output.segment_set_version_id},
+            artifact_uri=uri,
+            status="succeeded",
+        )
+        self.session.add(run)
+        await self.session.commit()
+        return output
 
     def _rows_to_segments(self, rows: list[SegmentItem]) -> list:
         from rag_lib.core.domain import Segment, SegmentType
@@ -127,15 +151,33 @@ class SegmentTransformService:
         return out
 
     def _get_llm(self, provider: str | None, model: str | None, temperature: float | None):
-        from rag_lib.llm.factory import get_llm
-
         try:
-            return get_llm(
-                provider=provider or settings.llm_provider_default,
-                model=model or settings.llm_model_default,
-                temperature=settings.llm_temperature_default if temperature is None else temperature,
+            resolved_provider = provider or settings.llm_provider_default
+            resolved_model = model or settings.llm_model_default
+            resolved_temperature = settings.llm_temperature_default if temperature is None else temperature
+            from rag_lib.llm.factory import create_llm
+
+            return create_llm(
+                provider=resolved_provider,
+                model_name=resolved_model,
+                temperature=resolved_temperature,
                 streaming=False,
             )
         except Exception as exc:
             raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
 
+    def _get_embeddings(self, provider: str, model_name: str | None):
+        if provider == "mock":
+            from rag_lib.embeddings.mock import MockEmbeddings
+
+            return MockEmbeddings()
+
+        from rag_lib.embeddings.factory import create_embeddings_model
+
+        try:
+            return create_embeddings_model(
+                provider=provider,
+                model_name=model_name,
+            )
+        except Exception as exc:
+            raise api_error(424, "missing_dependency", "Embedding provider initialization failed", {"error": str(exc)}) from exc

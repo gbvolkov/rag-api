@@ -214,6 +214,88 @@ class Job(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    external_subject: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    profile_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    settings_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
+    settings_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+
+class UserProjectSettings(Base):
+    __tablename__ = "user_project_settings"
+
+    user_project_settings_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
+    settings_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+
+class IngestionRun(Base):
+    __tablename__ = "ingestion_runs"
+
+    ingestion_run_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
+    run_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    source_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    params_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="succeeded")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class GraphQueryRun(Base):
+    __tablename__ = "graph_query_runs"
+
+    graph_query_run_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
+    graph_build_id: Mapped[str] = mapped_column(ForeignKey("graph_builds.graph_build_id", ondelete="CASCADE"), index=True)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    mode: Mapped[str] = mapped_column(String(20), nullable=False)
+    config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class RaptorRun(Base):
+    __tablename__ = "raptor_runs"
+
+    raptor_run_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
+    source_segment_set_version_id: Mapped[str] = mapped_column(
+        ForeignKey("segment_set_versions.segment_set_version_id", ondelete="CASCADE"),
+        index=True,
+    )
+    output_segment_set_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("segment_set_versions.segment_set_version_id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    params_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="succeeded")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
 class ArtifactEvent(Base):
     __tablename__ = "artifact_events"
 

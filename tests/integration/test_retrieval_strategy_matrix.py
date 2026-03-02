@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 import pytest
 
+from app.storage.keys import uri_to_key
+from app.storage.object_store import object_store
+
 
 @dataclass
 class _Hit:
@@ -11,11 +14,31 @@ class _Hit:
 
 
 class _DummyQdrantClient:
+    class _QueryResult:
+        def __init__(self, points):
+            self.points = points
+
+    class _Collections:
+        def __init__(self):
+            self.collections = []
+
     def __init__(self, hits):
         self._hits = hits
 
+    def get_collections(self):
+        return self._Collections()
+
+    def create_collection(self, *args, **kwargs):
+        return None
+
+    def upsert(self, *args, **kwargs):
+        return None
+
     def search(self, *args, **kwargs):
         return self._hits
+
+    def query_points(self, *args, **kwargs):
+        return self._QueryResult(self._hits)
 
 
 def _create_project_and_artifacts(client, text: str = "alpha beta gamma. delta epsilon."):
@@ -50,7 +73,12 @@ def _create_project_and_artifacts(client, text: str = "alpha beta gamma. delta e
     }
 
 
-def _create_faiss_build(client, project_id: str, chunk_set_id: str) -> str:
+def _create_faiss_build(
+    client,
+    project_id: str,
+    chunk_set_id: str,
+    doc_store: dict | None = None,
+) -> dict:
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
         json={"name": "faiss-idx", "provider": "faiss", "index_type": "chunk_vectors", "config": {}, "params": {}},
@@ -58,12 +86,15 @@ def _create_faiss_build(client, project_id: str, chunk_set_id: str) -> str:
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
 
+    payload = {"chunk_set_version_id": chunk_set_id, "params": {}, "execution_mode": "sync"}
+    if doc_store is not None:
+        payload["doc_store"] = doc_store
     build = client.post(
         f"/api/v1/indexes/{index_id}/builds",
-        json={"chunk_set_version_id": chunk_set_id, "params": {}, "execution_mode": "sync"},
+        json=payload,
     )
     assert build.status_code == 200, build.text
-    return build.json()["build"]["build_id"]
+    return build.json()["build"]
 
 
 @pytest.mark.parametrize(
@@ -111,7 +142,7 @@ def test_retrieval_ensemble_with_default_sources(client):
 
 def test_retrieval_vector_strategy_targets_faiss_build(client):
     ids = _create_project_and_artifacts(client)
-    build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])
+    build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])["build_id"]
 
     ret = client.post(
         f"/api/v1/projects/{ids['project_id']}/retrieve",
@@ -137,18 +168,18 @@ def test_retrieval_rerank_strategy_with_monkeypatched_dependencies(client, monke
         def invoke(self, query: str):
             return self._docs
 
-    def _mock_get_bm25_retriever(docs, k=4):
+    def _mock_create_bm25_retriever(docs, top_k=4):
         return _SimpleRetriever(docs)
 
-    def _mock_create_reranking_retriever(base_retriever_or_list, reranker_model="x", top_n=5, device="cpu"):
+    def _mock_create_reranking_retriever(base_retriever_or_list, reranker_model="x", top_k=5, max_score_ratio=0.0, device="cpu"):
         class _RerankRetriever:
             def invoke(self, query: str):
                 docs = base_retriever_or_list.invoke(query)
-                return docs[:top_n]
+                return docs[:top_k]
 
         return _RerankRetriever()
 
-    monkeypatch.setattr("rag_lib.retrieval.retrievers.get_bm25_retriever", _mock_get_bm25_retriever)
+    monkeypatch.setattr("rag_lib.retrieval.retrievers.create_bm25_retriever", _mock_create_bm25_retriever)
     monkeypatch.setattr("rag_lib.retrieval.composition.create_reranking_retriever", _mock_create_reranking_retriever)
 
     ret = client.post(
@@ -162,7 +193,7 @@ def test_retrieval_rerank_strategy_with_monkeypatched_dependencies(client, monke
                 "type": "rerank",
                 "base": {"type": "regex", "pattern": "alpha"},
                 "model_name": "mock-reranker",
-                "top_n": 3,
+                "top_k": 3,
                 "device": "cpu",
             },
         },
@@ -174,7 +205,6 @@ def test_retrieval_rerank_strategy_with_monkeypatched_dependencies(client, monke
 def test_retrieval_dual_storage_strategy_with_mocked_qdrant(client, monkeypatch):
     ids = _create_project_and_artifacts(client)
 
-    # Create qdrant index and queued build row (without executing background run).
     idx = client.post(
         f"/api/v1/projects/{ids['project_id']}/indexes",
         json={"name": "qdrant-idx", "provider": "qdrant", "index_type": "chunk_vectors", "config": {}, "params": {}},
@@ -182,15 +212,16 @@ def test_retrieval_dual_storage_strategy_with_mocked_qdrant(client, monkeypatch)
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
 
-    class _NoopTask:
-        def delay(self, *args, **kwargs):
-            return None
-
-    monkeypatch.setattr("app.api.api_v1.endpoints.indexes.run_index_build", _NoopTask())
+    monkeypatch.setattr("app.services.index_service.get_qdrant_client", lambda: _DummyQdrantClient([]))
 
     build = client.post(
         f"/api/v1/indexes/{index_id}/builds",
-        json={"chunk_set_version_id": ids["chunk_set_id"], "params": {}, "execution_mode": "async"},
+        json={
+            "chunk_set_version_id": ids["chunk_set_id"],
+            "params": {},
+            "execution_mode": "sync",
+            "doc_store": {"source": "auto", "id_key": "parent_id"},
+        },
     )
     assert build.status_code == 200, build.text
     build_id = build.json()["build"]["build_id"]
@@ -209,7 +240,7 @@ def test_retrieval_dual_storage_strategy_with_mocked_qdrant(client, monkeypatch)
             "target": "index_build",
             "target_id": build_id,
             "persist": False,
-            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "segment_id"},
+            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "parent_id"},
         },
     )
     assert ret.status_code == 200, ret.text
@@ -365,7 +396,7 @@ def test_retrieval_regex_pagination_cursor_contract(client):
 
 def test_retrieval_vector_accepts_optional_fields_and_paginates(client):
     ids = _create_project_and_artifacts(client, text="alpha one. alpha two. alpha three. alpha four. alpha five.")
-    build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])
+    build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])["build_id"]
 
     page1 = client.post(
         f"/api/v1/projects/{ids['project_id']}/retrieve",
@@ -403,7 +434,7 @@ def test_retrieval_vector_accepts_optional_fields_and_paginates(client):
 
 def test_retrieval_rerank_with_vector_base_uses_index_build(client):
     ids = _create_project_and_artifacts(client, text="alpha one. alpha two. alpha three.")
-    build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])
+    build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])["build_id"]
 
     ret = client.post(
         f"/api/v1/projects/{ids['project_id']}/retrieve",
@@ -416,7 +447,7 @@ def test_retrieval_rerank_with_vector_base_uses_index_build(client):
                 "type": "rerank",
                 "base": {"type": "vector", "k": 3},
                 "model_name": "mock-reranker",
-                "top_n": 2,
+                "top_k": 2,
                 "device": "cpu",
             },
         },
@@ -435,10 +466,83 @@ def test_dual_storage_requires_index_build_target(client):
             "target": "chunk_set",
             "target_id": ids["chunk_set_id"],
             "persist": False,
-            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "segment_id"},
+            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "parent_id"},
         },
     )
     assert ret.status_code == 400
+
+
+def test_index_build_without_doc_store_succeeds_and_manifest_omits_doc_store(client):
+    ids = _create_project_and_artifacts(client)
+    build = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])
+    assert build["status"] == "succeeded"
+    manifest = object_store.get_json(uri_to_key(build["artifact_uri"]))
+    assert isinstance(manifest, dict)
+    assert "doc_store" not in manifest
+
+
+def test_dual_storage_requires_doc_store_on_index_build(client):
+    ids = _create_project_and_artifacts(client)
+    build = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])
+
+    ret = client.post(
+        f"/api/v1/projects/{ids['project_id']}/retrieve",
+        json={
+            "query": "alpha",
+            "target": "index_build",
+            "target_id": build["build_id"],
+            "persist": False,
+            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "parent_id"},
+        },
+    )
+    assert ret.status_code == 400, ret.text
+    assert ret.json()["detail"]["code"] == "doc_store_required_for_dual_storage"
+
+
+def test_vector_retrieval_succeeds_when_build_has_doc_store(client):
+    ids = _create_project_and_artifacts(client)
+    build = _create_faiss_build(
+        client,
+        ids["project_id"],
+        ids["chunk_set_id"],
+        doc_store={"source": "auto", "id_key": "parent_id"},
+    )
+
+    ret = client.post(
+        f"/api/v1/projects/{ids['project_id']}/retrieve",
+        json={
+            "query": "alpha",
+            "target": "index_build",
+            "target_id": build["build_id"],
+            "persist": False,
+            "strategy": {"type": "vector", "k": 5},
+        },
+    )
+    assert ret.status_code == 200, ret.text
+    assert ret.json()["total"] >= 1
+
+
+def test_dual_storage_id_key_mismatch(client):
+    ids = _create_project_and_artifacts(client)
+    build = _create_faiss_build(
+        client,
+        ids["project_id"],
+        ids["chunk_set_id"],
+        doc_store={"source": "auto", "id_key": "parent_id"},
+    )
+
+    ret = client.post(
+        f"/api/v1/projects/{ids['project_id']}/retrieve",
+        json={
+            "query": "alpha",
+            "target": "index_build",
+            "target_id": build["build_id"],
+            "persist": False,
+            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "segment_id"},
+        },
+    )
+    assert ret.status_code == 400, ret.text
+    assert ret.json()["detail"]["code"] == "dual_storage_id_key_mismatch"
 
 
 def test_retrieval_unknown_strategy_type_rejected(client):

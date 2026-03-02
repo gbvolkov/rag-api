@@ -7,10 +7,10 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.capabilities import require_choice
 from app.core.config import settings
 from app.core.errors import api_error
-from app.core.capabilities import require_choice
-from app.models import ChunkItem, ChunkSetVersion, Index, IndexBuild, Job
+from app.models import ChunkItem, ChunkSetVersion, Index, IndexBuild, Job, SegmentItem
 from app.storage.object_store import object_store
 from app.storage.qdrant import get_qdrant_client
 
@@ -56,18 +56,29 @@ class IndexService:
             raise api_error(404, "index_not_found", "Index not found", {"index_id": index_id})
         return row
 
-    async def create_build(self, index_id: str, chunk_set_version_id: str, params: dict, status: str = "queued") -> IndexBuild:
+    async def create_build(
+        self,
+        index_id: str,
+        chunk_set_version_id: str,
+        params: dict,
+        doc_store: dict[str, Any] | None = None,
+        status: str = "queued",
+    ) -> IndexBuild:
         index_row = await self.get_index(index_id)
 
         chunk_set = await self.session.get(ChunkSetVersion, chunk_set_version_id)
         if not chunk_set or chunk_set.is_deleted:
             raise api_error(404, "chunk_set_not_found", "Chunk set not found", {"chunk_set_version_id": chunk_set_version_id})
 
+        payload_params = dict(params or {})
+        if doc_store is not None:
+            payload_params["doc_store"] = doc_store
+
         build = IndexBuild(
             index_id=index_id,
             project_id=index_row.project_id,
             chunk_set_version_id=chunk_set_version_id,
-            params_json=params,
+            params_json=payload_params,
             input_refs_json={"chunk_set_version_id": chunk_set_version_id},
             status=status,
             producer_type="rag_lib",
@@ -106,6 +117,12 @@ class IndexService:
         build.status = "running"
         await self.session.commit()
 
+        chunk_set_row = await self.session.get(ChunkSetVersion, build.chunk_set_version_id)
+        if not chunk_set_row or chunk_set_row.is_deleted:
+            build.status = "failed"
+            await self.session.commit()
+            raise api_error(404, "chunk_set_not_found", "Chunk set not found", {"chunk_set_version_id": build.chunk_set_version_id})
+
         chunk_stmt = (
             select(ChunkItem)
             .where(ChunkItem.chunk_set_version_id == build.chunk_set_version_id)
@@ -122,7 +139,17 @@ class IndexService:
         embeddings = self._get_embeddings(index_row)
         texts, metadatas, ids = self._chunk_payloads(chunks, build.chunk_set_version_id)
 
+        doc_store_config = (build.params_json or {}).get("doc_store")
+        doc_store_manifest: dict[str, Any] | None = None
+
         try:
+            if doc_store_config is not None:
+                doc_store_manifest = await self._build_doc_store_manifest(
+                    build=build,
+                    chunk_set_row=chunk_set_row,
+                    chunks=chunks,
+                    config=doc_store_config,
+                )
             if provider == "qdrant":
                 manifest = self._build_qdrant(index_row, build, embeddings, chunks)
             elif provider == "faiss":
@@ -131,6 +158,8 @@ class IndexService:
                 manifest = self._build_chroma(index_row, build, embeddings, texts, metadatas, ids)
             else:
                 manifest = self._build_postgres(index_row, build, embeddings, texts, metadatas, ids)
+            if doc_store_manifest is not None:
+                manifest["doc_store"] = doc_store_manifest
         except Exception:
             build.status = "failed"
             await self.session.commit()
@@ -138,6 +167,12 @@ class IndexService:
 
         key = f"projects/{build.project_id}/indexes/{index_row.index_id}/builds/{build.build_id}/manifest.json"
         build.artifact_uri = object_store.put_json(key, manifest)
+        input_refs = dict(build.input_refs_json or {})
+        if doc_store_manifest is not None:
+            input_refs["doc_store"] = doc_store_manifest
+        else:
+            input_refs.pop("doc_store", None)
+        build.input_refs_json = input_refs
 
         await self.session.execute(
             update(IndexBuild)
@@ -153,18 +188,173 @@ class IndexService:
         await self.session.refresh(build)
         return build
 
+    async def _build_doc_store_manifest(
+        self,
+        *,
+        build: IndexBuild,
+        chunk_set_row: ChunkSetVersion,
+        chunks: list[ChunkItem],
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        source = str(config.get("source", "auto")).lower()
+        if source not in {"auto", "segment_set", "parent_chunk_set"}:
+            raise api_error(
+                400,
+                "invalid_doc_store_source",
+                "doc_store.source must be one of auto, segment_set, parent_chunk_set",
+                {"source": source},
+            )
+
+        id_key_raw = config.get("id_key", "parent_id")
+        id_key = str(id_key_raw).strip() if id_key_raw is not None else "parent_id"
+        if not id_key:
+            raise api_error(400, "invalid_doc_store_id_key", "doc_store.id_key must be a non-empty string")
+
+        if source == "auto":
+            source = "parent_chunk_set" if chunk_set_row.parent_chunk_set_version_id else "segment_set"
+
+        if source == "segment_set":
+            source_id = chunk_set_row.segment_set_version_id
+        else:
+            source_id = chunk_set_row.parent_chunk_set_version_id
+            if not source_id:
+                raise api_error(
+                    400,
+                    "doc_store_source_unavailable",
+                    "Requested doc_store source parent_chunk_set is unavailable for chunk set",
+                    {"chunk_set_version_id": chunk_set_row.chunk_set_version_id},
+                )
+
+        parent_ids: list[str] = []
+        seen: set[str] = set()
+        missing_parent_key_chunk_ids: list[str] = []
+        for chunk in chunks:
+            metadata = chunk.metadata_json or {}
+            parent_id = metadata.get(id_key)
+            if parent_id is None:
+                missing_parent_key_chunk_ids.append(chunk.item_id)
+                continue
+            parent_id_str = str(parent_id)
+            if parent_id_str in seen:
+                continue
+            seen.add(parent_id_str)
+            parent_ids.append(parent_id_str)
+
+        if missing_parent_key_chunk_ids:
+            raise api_error(
+                400,
+                "doc_store_parent_key_missing",
+                "Chunk metadata is missing configured doc_store id_key",
+                {
+                    "id_key": id_key,
+                    "missing_parent_key_chunk_ids": missing_parent_key_chunk_ids[:50],
+                    "missing_parent_key_count": len(missing_parent_key_chunk_ids),
+                },
+            )
+
+        if not parent_ids:
+            raise api_error(
+                400,
+                "doc_store_empty_parent_ids",
+                "Configured doc_store id_key produced no parent ids",
+                {"id_key": id_key},
+            )
+
+        parent_docs_by_id: dict[str, dict[str, Any]] = {}
+        if source == "segment_set":
+            parent_stmt = select(SegmentItem).where(
+                SegmentItem.segment_set_version_id == source_id,
+                SegmentItem.item_id.in_(parent_ids),
+            )
+            parent_res = await self.session.execute(parent_stmt)
+            parent_rows = list(parent_res.scalars().all())
+            for row in parent_rows:
+                parent_docs_by_id[row.item_id] = {
+                    "id": row.item_id,
+                    "page_content": row.content,
+                    "metadata": {
+                        **self._sanitize_metadata(row.metadata_json or {}),
+                        "item_id": row.item_id,
+                        id_key: row.item_id,
+                        "segment_set_version_id": row.segment_set_version_id,
+                    },
+                }
+        else:
+            parent_stmt = select(ChunkItem).where(
+                ChunkItem.chunk_set_version_id == source_id,
+                ChunkItem.item_id.in_(parent_ids),
+            )
+            parent_res = await self.session.execute(parent_stmt)
+            parent_rows = list(parent_res.scalars().all())
+            for row in parent_rows:
+                parent_docs_by_id[row.item_id] = {
+                    "id": row.item_id,
+                    "page_content": row.content,
+                    "metadata": {
+                        **self._sanitize_metadata(row.metadata_json or {}),
+                        "item_id": row.item_id,
+                        id_key: row.item_id,
+                        "chunk_set_version_id": row.chunk_set_version_id,
+                    },
+                }
+
+        missing_parent_ids = [pid for pid in parent_ids if pid not in parent_docs_by_id]
+        if missing_parent_ids:
+            raise api_error(
+                400,
+                "doc_store_parent_not_found",
+                "Parent ids referenced by chunks were not found in configured doc_store source",
+                {
+                    "source": source,
+                    "source_id": source_id,
+                    "missing_parent_ids": missing_parent_ids[:50],
+                    "missing_parent_count": len(missing_parent_ids),
+                },
+            )
+
+        items = [parent_docs_by_id[parent_id] for parent_id in parent_ids]
+        doc_store_payload = {
+            "version": 1,
+            "index_id": build.index_id,
+            "build_id": build.build_id,
+            "source": {"type": source, "id": source_id},
+            "id_key": id_key,
+            "items": items,
+        }
+        key = f"projects/{build.project_id}/indexes/{build.index_id}/builds/{build.build_id}/doc_store.json"
+        artifact_uri = object_store.put_json(key, doc_store_payload)
+
+        return {
+            "source": source,
+            "source_id": source_id,
+            "id_key": id_key,
+            "artifact_uri": artifact_uri,
+            "total_items": len(items),
+        }
+
     def _chunk_payloads(self, chunks: list[ChunkItem], chunk_set_version_id: str):
         texts = [c.content for c in chunks]
         metadatas = [
             {
                 "chunk_item_id": c.item_id,
                 "chunk_set_version_id": chunk_set_version_id,
-                "metadata": c.metadata_json,
+                **self._sanitize_metadata(c.metadata_json or {}),
             }
             for c in chunks
         ]
         ids = [c.item_id for c in chunks]
         return texts, metadatas, ids
+
+    def _sanitize_metadata(self, metadata: dict[str, Any]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in (metadata or {}).items():
+            if not isinstance(key, str):
+                continue
+            if value is None or isinstance(value, (str, int, float, bool)):
+                out[key] = value
+            else:
+                out[key] = str(value)
+        return out
 
     def _build_qdrant(self, index_row: Index, build: IndexBuild, embeddings, chunks: list[ChunkItem]) -> dict[str, Any]:
         vectors = embeddings.embed_documents([c.content for c in chunks])
@@ -178,28 +368,37 @@ class IndexService:
         )
 
         qdrant = get_qdrant_client()
-        existing = {c.name for c in qdrant.get_collections().collections}
-        if collection not in existing:
-            qdrant.create_collection(
-                collection_name=collection,
-                vectors_config=VectorParams(size=dimension, distance=Distance.COSINE),
-            )
-
-        points = []
-        for chunk, vector in zip(chunks, vectors, strict=True):
-            points.append(
-                PointStruct(
-                    id=chunk.item_id,
-                    vector=vector,
-                    payload={
-                        "chunk_item_id": chunk.item_id,
-                        "content": chunk.content,
-                        "metadata": chunk.metadata_json,
-                        "chunk_set_version_id": build.chunk_set_version_id,
-                    },
+        try:
+            existing = {c.name for c in qdrant.get_collections().collections}
+            if collection not in existing:
+                qdrant.create_collection(
+                    collection_name=collection,
+                    vectors_config=VectorParams(size=dimension, distance=Distance.COSINE),
                 )
-            )
-        qdrant.upsert(collection_name=collection, points=points)
+
+            points = []
+            for chunk, vector in zip(chunks, vectors, strict=True):
+                points.append(
+                    PointStruct(
+                        id=chunk.item_id,
+                        vector=vector,
+                        payload={
+                            "chunk_item_id": chunk.item_id,
+                            "content": chunk.content,
+                            "metadata": chunk.metadata_json,
+                            "chunk_set_version_id": build.chunk_set_version_id,
+                        },
+                    )
+                )
+            qdrant.upsert(collection_name=collection, points=points)
+        except Exception as exc:
+            raise api_error(
+                424,
+                "qdrant_unavailable",
+                "Qdrant request failed",
+                {"qdrant_url": settings.qdrant_url, "error": str(exc)},
+                hint="Start Qdrant and verify QDRANT_URL is reachable from rag-api.",
+            ) from exc
 
         index_row.config_json = {**(index_row.config_json or {}), "collection_name": collection}
         return {
@@ -310,9 +509,9 @@ class IndexService:
 
             return MockEmbeddings()
 
-        from rag_lib.embeddings.factory import get_embeddings_model
+        from rag_lib.embeddings.factory import create_embeddings_model
 
-        return get_embeddings_model(provider=provider, model_name=model_name)
+        return create_embeddings_model(provider=provider, model_name=model_name)
 
     async def create_job(self, project_id: str, job_type: str, payload: dict) -> Job:
         job = Job(project_id=project_id, job_type=job_type, status="queued", payload_json=payload)

@@ -13,6 +13,7 @@ from app.api.api_v1.endpoints import (
     retrieval,
     segments,
     tables,
+    users,
 )
 
 api_router = APIRouter()
@@ -28,3 +29,4 @@ api_router.include_router(admin.router, tags=["admin"])
 api_router.include_router(pipeline.router, tags=["pipeline"])
 api_router.include_router(artifacts.router, tags=["artifacts"])
 api_router.include_router(tables.router, tags=["tables"])
+api_router.include_router(users.router, tags=["users"])

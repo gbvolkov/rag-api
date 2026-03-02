@@ -7,7 +7,7 @@ Project-scoped document ingestion, segmentation, chunking, indexing, retrieval, 
 - API: FastAPI (`/api/v1`)
 - DB: PostgreSQL (metadata and lineage)
 - Object store: MinIO (raw files and generated artifacts)
-- Vector store: Qdrant and/or FAISS (depending on index provider)
+- Vector store: Qdrant / FAISS / Chroma / Postgres(PGVector) (depending on index provider)
 - Async runtime: Celery + Redis
 
 ## Run
@@ -16,6 +16,12 @@ Project-scoped document ingestion, segmentation, chunking, indexing, retrieval, 
 
 ```bash
 docker compose up --build
+```
+
+For subsequent starts (when dependencies/config did not change), skip rebuild:
+
+```bash
+docker compose up
 ```
 
 - API: `http://localhost:8000`
@@ -27,6 +33,12 @@ Use an override that clears dependency host-port mappings:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local-noports.yml up -d --build
+```
+
+Subsequent starts:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local-noports.yml up -d
 ```
 
 This keeps API on `:8000` while avoiding local collisions for Postgres/Redis/MinIO/Qdrant.
@@ -85,174 +97,217 @@ If an invalid cursor is supplied, it is treated as offset `0`.
 
 ## Endpoint Reference
 
-### Service Endpoints
+This section defines request parameters for every method. It is intentionally explicit for frontend implementation.
+
+Conventions used below:
+
+- `Required` means required by request schema/signature.
+- `Default` means applied when field is omitted.
+- `Allowed` lists accepted enum-like values.
+- For `object` fields, this section describes currently implemented keys and behavior.
+- Fields described as "free-form" accept arbitrary JSON and are persisted; no strict key validation is enforced by API.
 
 ### GET `/`
 
-Returns service identity.
+| Parameter location | Parameters |
+|---|---|
+| path | none |
+| query | none |
+| body | none |
 
 Response `200`:
 
-```json
-{
-  "service": "RAG API",
-  "api": "/api/v1"
-}
-```
+| Field | Type | Notes |
+|---|---|---|
+| `service` | string | service name (`settings.app_name`) |
+| `api` | string | API prefix (`settings.api_v1_str`, usually `/api/v1`) |
 
 ### GET `/health`
 
-Liveness endpoint.
+| Parameter location | Parameters |
+|---|---|
+| path | none |
+| query | none |
+| body | none |
 
 Response `200`:
 
-```json
-{
-  "status": "ok"
-}
-```
-
-## Projects
+| Field | Type | Notes |
+|---|---|---|
+| `status` | string | constant `"ok"` |
 
 ### POST `/api/v1/projects`
 
-Creates a project.
+Path/query params: none.
 
 Request body (`CreateProjectRequest`):
 
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `name` | string | yes | - | `1..200` chars |
+| `description` | string \| null | no | `null` | max `2000` chars |
+| `settings` | object | no | `{}` | project defaults, see nested fields |
+
+`settings` nested fields:
+
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `name` | string | yes | - | 1..200 chars |
-| `description` | string \| null | no | `null` | max 2000 chars |
-| `settings` | object | no | `{}` | `ProjectSettings` |
-| `settings.default_retrieval_preset` | string \| null | no | `null` | optional preset label |
-| `settings.default_chunking_preset` | string \| null | no | `null` | optional preset label |
-| `settings.extra` | object | no | `{}` | arbitrary JSON |
+| `default_retrieval_preset` | string \| null | no | `null` | optional label |
+| `default_chunking_preset` | string \| null | no | `null` | optional label |
+| `extra` | object | no | `{}` | arbitrary JSON for frontend/project metadata |
 
 Response `200`: `ProjectOut`
+
+Behavior notes:
+
+- Creates a new non-deleted project row.
+- `settings` is stored as JSON and returned as structured object.
 
 ### GET `/api/v1/projects`
 
-Lists non-deleted projects ordered by newest first.
+| Parameter location | Parameters |
+|---|---|
+| path | none |
+| query | none |
+| body | none |
 
 Response `200`: `ProjectOut[]`
 
-### GET `/api/v1/projects/{project_id}`
+Behavior notes:
 
-Gets one project.
+- Returns only non-deleted projects.
+- Sorted by `created_at desc` (newest first).
+
+### GET `/api/v1/projects/{project_id}`
 
 Path params:
 
-| Name | Type | Required | Notes |
-|---|---|---|---|
-| `project_id` | string | yes | project identifier |
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
+
+Query/body params: none.
 
 Response `200`: `ProjectOut`
+
+Behavior notes:
+
+- Returns `404 project_not_found` if project is missing or soft-deleted.
 
 ### PATCH `/api/v1/projects/{project_id}`
 
-Partially updates project fields.
-
 Path params:
 
-| Name | Type | Required | Notes |
-|---|---|---|---|
-| `project_id` | string | yes | project identifier |
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
 
 Request body (`UpdateProjectRequest`, all optional):
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `name` | string \| null | no | 1..200 chars if supplied |
-| `description` | string \| null | no | max 2000 chars |
-| `settings` | object \| null | no | full `ProjectSettings` replacement |
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `name` | string \| null | no | `null` | if provided, `1..200` chars |
+| `description` | string \| null | no | `null` | if provided, max `2000` chars |
+| `settings` | object \| null | no | `null` | full replacement of project settings |
+
+`settings` nested fields are identical to `POST /projects`.
 
 Response `200`: `ProjectOut`
 
-### DELETE `/api/v1/projects/{project_id}`
+Behavior notes:
 
-Soft-deletes a project (marks it as deleted; does not physically remove the row).
+- Partial update: omitted fields stay unchanged.
+- `settings` replaces the full project settings object when provided.
+
+### DELETE `/api/v1/projects/{project_id}`
 
 Path params:
 
-| Name | Type | Required | Notes |
-|---|---|---|---|
-| `project_id` | string | yes | project identifier |
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
+
+Query/body params: none.
 
 Response `200`:
 
-```json
-{
-  "ok": true,
-  "project_id": "..."
-}
-```
+| Field | Type |
+|---|---|
+| `ok` | boolean |
+| `project_id` | string |
 
-After delete:
+Behavior notes:
 
-- `GET /api/v1/projects` excludes the project.
-- `GET /api/v1/projects/{project_id}` and `PATCH /api/v1/projects/{project_id}` return `404`.
-- All project-scoped routes under `/api/v1/projects/{project_id}/...` return `404`.
-- Existing artifact-by-id routes (for example `/api/v1/documents/{document_id}`) remain available.
-
-## Documents
+- Soft delete only (`is_deleted=true`), no physical row removal.
+- Deleted project disappears from project list and project-scoped routes return `404`.
 
 ### POST `/api/v1/projects/{project_id}/documents`
 
-Uploads one raw file and creates:
-
-1. `Document`
-2. active `DocumentVersion`
-
 Path params:
 
-| Name | Type | Required | Notes |
-|---|---|---|---|
-| `project_id` | string | yes | project identifier |
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
 
 Multipart form fields:
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `file` | binary file | yes | - | uploaded content |
-| `parser_params_json` | string \| null | no | `null` | JSON string; parsed with `json.loads` |
+| `file` | binary file | yes | - | uploaded bytes |
+| `parser_params_json` | string \| null | no | `null` | must be valid JSON string; parsed via `json.loads` |
+
+`parser_params_json` behavior:
+
+- Parsed JSON is persisted as `document_version.parser_params`.
+- No strict key validation is applied.
+- Typical frontend keys: `loader_type`, `loader_params`, or any ingestion metadata tags.
 
 Response `200`:
 
-```json
-{
-  "document": { "...DocumentOut fields..." },
-  "document_version": { "...DocumentVersionOut fields..." }
-}
-```
+| Field | Type | Notes |
+|---|---|---|
+| `document` | `DocumentOut` | created document record |
+| `document_version` | `DocumentVersionOut` | active version created for uploaded file |
+
+Behavior notes:
+
+- Upload MIME is normalized before persistence.
+- Raw bytes are stored in object storage and linked by `storage_uri`/`artifact_uri`.
 
 ### GET `/api/v1/projects/{project_id}/documents`
 
-Lists non-deleted documents in project, newest first.
-
 Path params:
 
-| Name | Type | Required | Notes |
-|---|---|---|---|
-| `project_id` | string | yes | project identifier |
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
+
+Query/body params: none.
 
 Response `200`: `DocumentOut[]`
 
-### GET `/api/v1/documents/{document_id}`
+Behavior notes:
 
-Gets one non-deleted document.
+- Returns only non-deleted documents for project.
+- Sorted by `created_at desc`.
+
+### GET `/api/v1/documents/{document_id}`
 
 Path params:
 
 | Name | Type | Required |
 |---|---|---|
 | `document_id` | string | yes |
+
+Query/body params: none.
 
 Response `200`: `DocumentOut`
 
-### GET `/api/v1/documents/{document_id}/versions`
+Behavior notes:
 
-Lists non-deleted versions for document, newest first.
+- Returns `404 document_not_found` when missing or soft-deleted.
+
+### GET `/api/v1/documents/{document_id}/versions`
 
 Path params:
 
@@ -260,11 +315,16 @@ Path params:
 |---|---|---|
 | `document_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `DocumentVersionOut[]`
 
-### GET `/api/v1/document_versions/{version_id}/content`
+Behavior notes:
 
-Streams raw bytes for one non-deleted document version (for client preview/download).
+- Returns only non-deleted versions for the document.
+- Sorted by `created_at desc`.
+
+### GET `/api/v1/document_versions/{version_id}/content`
 
 Path params:
 
@@ -272,33 +332,23 @@ Path params:
 |---|---|---|
 | `version_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`:
 
-- Body: raw file bytes
+- Body: raw bytes (`application/*`, `text/*`, etc., based on effective preview MIME)
 - Headers:
   - `Content-Type`: effective preview MIME
   - `Content-Disposition`: `inline; filename*=UTF-8''<filename>`
-  - `ETag`: document version `content_hash`
+  - `ETag`: version `content_hash`
   - `X-Content-Type-Options: nosniff`
 
-MIME behavior:
+Behavior notes:
 
-- Upload MIME is normalized and stored with the document.
-- If stored MIME is generic (`application/octet-stream`), preview MIME is inferred from filename where possible.
-- If inference fails, `application/octet-stream` is returned.
-
-Common frontend behavior:
-
-- Render `application/pdf` in iframe/object.
-- Render `image/*` in image tags.
-- Render `text/*` and `application/json` in text/code viewers.
-- For DOCX MIME, use a client viewer library (for example `docx-preview`/`mammoth`) or fallback to download.
-
-## Segments
+- Effective preview MIME may be inferred from filename when stored MIME is generic.
+- Returns `404 document_version_not_found` or `404 document_content_not_found` when unresolved.
 
 ### POST `/api/v1/document_versions/{version_id}/segments`
-
-Builds a new `SegmentSetVersion` and segment items from a document version.
 
 Path params:
 
@@ -308,17 +358,69 @@ Path params:
 
 Request body (`CreateSegmentsRequest`):
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `loader_type` | string | yes | - | `pdf`, `miner_u`, `docx`, `csv`, `excel`, `json`, `qa`, `table`, `regex` |
-| `loader_params` | object | no | `{}` | loader-specific options (see Regex Loader Contract and DOCX + regex_patterns sections below) |
-| `source_text` | string \| null | no | `null` | if provided, loader is bypassed and a single text segment is produced |
+| `loader_type` | string | yes | - | Allowed: `pdf`, `miner_u`, `docx`, `csv`, `excel`, `json`, `qa`, `table`, `regex` |
+| `loader_params` | object | no | `{}` | loader-specific parameters, detailed below |
+| `source_text` | string \| null | no | `null` | if present, bypasses file loader and emits one text segment |
+
+`loader_params` by `loader_type`:
+
+| loader_type | Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|---|
+| `pdf` | `backend` | string \| null | no | loader default | Camelot backend passed to PDF loader |
+| `pdf` | `summarize_tables` | boolean | no | `false` | enables table summarization |
+| `pdf` | `table_summarizer` | object | no | `{}` | summary config when `summarize_tables=true` |
+| `pdf.table_summarizer` | `type` | string | no | `mock` | `mock` or `llm` |
+| `pdf.table_summarizer` | `llm_provider` | string \| null | no | settings default | used when `type=llm` |
+| `pdf.table_summarizer` | `model` | string \| null | no | settings default | used when `type=llm` |
+| `pdf.table_summarizer` | `temperature` | number \| null | no | settings default | used when `type=llm` |
+| `miner_u` | `fallback_to_pdf_loader` | boolean | no | `true` | fallback to PDF loader on dependency/runtime failure |
+| `docx` | `regex_patterns` | array | no | `null` | extra heading detection/splitting rules |
+| `docx` | `exclude_patterns` | string[] | no | `[]` | regex exclusions |
+| `docx` | `include_parent_content` | boolean | no | `true` | parent-content inclusion for docx regex post-splitting |
+| `csv` | `chunk_size` | integer \| null | no | loader default | row grouping/chunking size in CSV loader |
+| `excel` | none | - | - | - | no custom params currently |
+| `json` | `jq_schema` | string | no | `"."` | jq selector used by JSON loader |
+| `qa` | none | - | - | - | no custom params currently |
+| `table` | `mode` | string | no | `row` | `row` or `group` |
+| `table` | `group_by` | string \| null | no | `null` | used with `mode=group` |
+| `regex` | `patterns` | array | yes | - | non-empty hierarchy pattern list |
+| `regex` | `exclude_patterns` | string[] | no | `[]` | line exclusion regexes |
+| `regex` | `include_parent_content` | boolean \| integer | no | `false` | ancestor-content concatenation mode |
+
+`regex`/`docx.regex_patterns` accepted pattern item shapes:
+
+| Shape | Example | How pattern is used | Expected result example |
+|---|---|---|---|
+| array pair `[level, pattern]` | `[2, "^Subsection\\s+(\\d+\\.\\d+):"]` | compiles one regex rule with fixed hierarchy level `2` | for line `Subsection 1.2: Scope`, created segment has `level=2`, `metadata.title=\"1.2\"`; `path` contains ancestor titles |
+| object with single pattern | `{"level": 1, "pattern": "^Section\\s+(\\d+):"}` | same behavior as array pair, but object form | for line `Section 3: Access`, segment has `level=1`, `metadata.title=\"3\"`, `path=[]` (top-level) |
+| object with pattern list | `{"level": 2, "pattern": ["^Section\\s+(.+)$", "^Clause\\s+(.+)$"]}` | each pattern in list is compiled as a separate rule at same level; first matching rule wins by order | lines `Section Controls` and `Clause Passwords` both create `level=2` segments; `metadata.title` comes from capture group `(.+)` |
+| object with `custom_patterns` alias | `{"level": 2, "custom_patterns": ["^Item\\s+(.+)$"]}` | `custom_patterns` is treated as alias of `pattern` list | line `Item Logging` creates segment with `level=2`, `metadata.title=\"Logging\"` |
+
+Pattern execution notes:
+
+- `loader_type=regex`: text is processed line-by-line and rules use Python regex `search`.
+- `loader_type=docx` with `regex_patterns`: paragraph text rules use Python regex `match` (start of string).
+- If a regex has capture groups, `metadata.title` uses `group(1)`.
+- If no capture group exists, title falls back to text after the matched portion (or full line if needed).
+
+Important error behavior:
+
+- `loader_type=regex` with missing/empty `patterns` -> `400 invalid_loader_params`
+- unsupported `loader_type` (and no `source_text`) -> `400 unsupported_loader`
+- `loader_type=miner_u` when feature disabled -> `403 capability_disabled`
+- `loader_type=miner_u` dependency missing and `fallback_to_pdf_loader=false` -> dependency/runtime error
 
 Response `200`: `SegmentSetWithItems`
 
-### GET `/api/v1/projects/{project_id}/segment_sets`
+Behavior notes:
 
-Lists non-deleted segment sets for project, newest first.
+- For standard creation, existing active segment sets of the same `document_version_id` are deactivated.
+- Items in response are ordered by `position asc`.
+- Segment set `params` persists loader metadata (`loader_type`, `loader_params`, `source_text` flag).
+
+### GET `/api/v1/projects/{project_id}/segment_sets`
 
 Path params:
 
@@ -326,11 +428,17 @@ Path params:
 |---|---|---|
 | `project_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `SegmentSetOut[]`
 
-### GET `/api/v1/segment_sets/{segment_set_id}`
+Behavior notes:
 
-Gets one segment set with all items.
+- Returns only non-deleted segment sets for the project.
+- Sorted by `created_at desc`.
+- `total_items` is computed per segment set.
+
+### GET `/api/v1/segment_sets/{segment_set_id}`
 
 Path params:
 
@@ -338,11 +446,16 @@ Path params:
 |---|---|---|
 | `segment_set_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `SegmentSetWithItems`
 
-### POST `/api/v1/segment_sets/{segment_set_id}/clone_patch_item`
+Behavior notes:
 
-Creates a new derived segment set version by cloning all items and patching one item.
+- Returns segment set plus all segment items ordered by `position asc`.
+- Returns `404 segment_set_not_found` when missing or soft-deleted.
+
+### POST `/api/v1/segment_sets/{segment_set_id}/clone_patch_item`
 
 Path params:
 
@@ -352,19 +465,100 @@ Path params:
 
 Request body (`ClonePatchSegmentRequest`):
 
-| Field | Type | Required | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `item_id` | string | yes | - | existing segment item id in source set |
+| `patch` | object | yes | - | patch keys below; unspecified keys keep original values |
+| `params` | object | no | `{}` | free-form metadata persisted under `segment_set.params.clone_patch` |
+
+`patch` supported keys:
+
+| Key | Type | Required | Notes |
 |---|---|---|---|
-| `item_id` | string | yes | item to patch |
-| `patch` | object | yes | supported keys: `content`, `metadata`, `parent_id`, `level`, `path`, `type`, `original_format` |
-| `params` | object | no | free-form metadata persisted under `segment_set.params.clone_patch` |
+| `content` | string | no | new segment content |
+| `metadata` | object | no | full metadata replacement for patched item |
+| `parent_id` | string \| null | no | hierarchy linkage override |
+| `level` | integer | no | hierarchy level override |
+| `path` | string[] | no | hierarchy path override |
+| `type` | string | no | segment type override (for example `text`, `table`) |
+| `original_format` | string | no | source-format label override |
+
+`params` expected fields:
+
+- No required keys are enforced.
+- Recommended keys for traceability: `reason`, `editor`, `ticket`, `source`, `timestamp`.
+- API stores exactly what you send at `segment_set.params.clone_patch`.
 
 Response `200`: `SegmentSetWithItems`
 
-## Chunks
+Behavior notes:
+
+- Clones all items from source set, applies patch to target item only, and creates derived set.
+- New set stores lineage in `parent_segment_set_version_id` and `input_refs.patched_item_id`.
+- Active segment set for same document version is switched to the newly created set.
+
+### POST `/api/v1/segment_sets/{segment_set_id}/enrich`
+
+Path params:
+
+| Name | Type | Required |
+|---|---|---|
+| `segment_set_id` | string | yes |
+
+Request body (`EnrichSegmentsRequest`):
+
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `execution_mode` | string | no | `sync` | `sync` or `async` |
+| `llm_provider` | string \| null | no | `null` | overrides default LLM provider |
+| `llm_model` | string \| null | no | `null` | overrides default LLM model |
+| `llm_temperature` | number \| null | no | `null` | overrides default LLM temperature |
+| `params` | object | no | `{}` | free-form enrichment metadata persisted as `enrich_params` |
+
+Behavior notes:
+
+- Requires LLM capability for actual processing.
+- `execution_mode=async` enqueues job type `segment_enrich`.
+- `params` has no enforced schema; recommended keys: `prompt_variant`, `labels`, `audit`.
+
+Response `200`:
+
+- Sync: `{ "mode": "sync", "segment_set": SegmentSetOut, "items": SegmentItemOut[] }`
+- Async: `{ "mode": "async", "job_id": "<id>" }`
+
+### POST `/api/v1/segment_sets/{segment_set_id}/raptor`
+
+Path params:
+
+| Name | Type | Required |
+|---|---|---|
+| `segment_set_id` | string | yes |
+
+Request body (`RaptorSegmentsRequest`):
+
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `execution_mode` | string | no | `async` | `sync` or `async` |
+| `max_levels` | integer | no | `3` | RAPTOR hierarchy depth |
+| `llm_provider` | string \| null | no | `null` | overrides LLM provider |
+| `llm_model` | string \| null | no | `null` | overrides LLM model |
+| `llm_temperature` | number \| null | no | `null` | overrides LLM temperature |
+| `embedding_provider` | string | no | `openai` | embedding provider for clustering |
+| `embedding_model_name` | string \| null | no | `null` | embedding model override |
+| `params` | object | no | `{}` | free-form metadata persisted under `raptor_params` |
+
+Behavior notes:
+
+- Requires `FEATURE_ENABLE_RAPTOR=true` and `FEATURE_ENABLE_LLM=true`.
+- Requires optional dependency `umap-learn`.
+- `execution_mode=async` enqueues job type `segment_raptor`.
+
+Response `200`:
+
+- Sync: `{ "mode": "sync", "segment_set": SegmentSetOut, "items": SegmentItemOut[] }`
+- Async: `{ "mode": "async", "job_id": "<id>" }`
 
 ### POST `/api/v1/segment_sets/{segment_set_id}/chunk`
-
-Builds a new `ChunkSetVersion` from one segment set.
 
 Path params:
 
@@ -374,16 +568,50 @@ Path params:
 
 Request body (`ChunkFromSegmentRequest`):
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `strategy` | string | no | `recursive` | see chunk strategy matrix below |
-| `chunker_params` | object | no | `{}` | strategy-specific options (see Regex Chunker Contract below for `strategy=regex`) |
+| `strategy` | string | no | `recursive` | Allowed: `recursive`, `token`, `sentence`, `regex`, `markdown_table`, `semantic` |
+| `chunker_params` | object | no | `{}` | strategy-specific parameters below |
+
+`chunker_params` by strategy:
+
+| strategy | Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|---|
+| `recursive` | `chunk_size` | integer | no | `4000` | max chars/tokens per chunk by splitter logic |
+| `recursive` | `chunk_overlap` | integer | no | `200` | overlap between adjacent chunks |
+| `recursive` | `separators` | string[] \| null | no | splitter default | custom separator priority list |
+| `token` | `chunk_size` | integer | no | `4000` | token-window size |
+| `token` | `chunk_overlap` | integer | no | `200` | token overlap |
+| `token` | `model_name` | string | no | `cl100k_base` | token model name |
+| `token` | `encoding_name` | string \| null | no | `null` | optional tokenizer encoding |
+| `sentence` | `chunk_size` | integer | no | `4000` | chunk size |
+| `sentence` | `chunk_overlap` | integer | no | `200` | overlap |
+| `sentence` | `language` | string | no | `english` | sentence splitter language |
+| `regex` | `pattern` | string | yes | - | Python regex for `re.split`; required |
+| `regex` | `chunk_size` | integer | no | `4000` | constructor argument |
+| `regex` | `chunk_overlap` | integer | no | `200` | constructor argument |
+| `markdown_table` | none | - | - | - | no custom params |
+| `semantic` | `embedding_provider` | string \| null | no | provider default | embedding provider |
+| `semantic` | `embedding_model_name` | string \| null | no | provider default | embedding model |
+| `semantic` | `threshold` | number \| null | no | splitter default | semantic split threshold |
+| `semantic` | `threshold_type` | string | no | `fixed` | threshold mode |
+| `semantic` | `percentile_threshold` | integer | no | `90` | percentile threshold |
+| `semantic` | `window_size` | integer | no | `1` | semantic context window |
+
+Error behavior:
+
+- unsupported strategy -> `400 unsupported_chunk_strategy`
+- `strategy=regex` and missing `pattern` -> `400 invalid_chunker_params`
 
 Response `200`: `ChunkSetWithItems`
 
-### GET `/api/v1/projects/{project_id}/chunk_sets`
+Behavior notes:
 
-Lists non-deleted chunk sets for project, newest first.
+- Existing active chunk sets in project are deactivated before creating the new set.
+- Output items are ordered by `position asc`.
+- Each emitted chunk has new `item_id` and includes `source_segment_item_id` + `chunk_index` in metadata.
+
+### GET `/api/v1/projects/{project_id}/chunk_sets`
 
 Path params:
 
@@ -391,11 +619,17 @@ Path params:
 |---|---|---|
 | `project_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `ChunkSetOut[]`
 
-### GET `/api/v1/chunk_sets/{chunk_set_id}`
+Behavior notes:
 
-Gets one chunk set with all chunk items.
+- Returns only non-deleted chunk sets for the project.
+- Sorted by `created_at desc`.
+- `total_items` is computed per chunk set.
+
+### GET `/api/v1/chunk_sets/{chunk_set_id}`
 
 Path params:
 
@@ -403,11 +637,16 @@ Path params:
 |---|---|---|
 | `chunk_set_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `ChunkSetWithItems`
 
-### POST `/api/v1/chunk_sets/{chunk_set_id}/clone_patch_item`
+Behavior notes:
 
-Creates a new derived chunk set by cloning all items and patching one item.
+- Returns chunk set plus all chunk items ordered by `position asc`.
+- Returns `404 chunk_set_not_found` when missing or soft-deleted.
+
+### POST `/api/v1/chunk_sets/{chunk_set_id}/clone_patch_item`
 
 Path params:
 
@@ -417,19 +656,39 @@ Path params:
 
 Request body (`ClonePatchChunkRequest`):
 
-| Field | Type | Required | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `item_id` | string | yes | - | existing chunk item id in source set |
+| `patch` | object | yes | - | patch keys below; unspecified keys keep original values |
+| `params` | object | no | `{}` | free-form metadata persisted under `chunk_set.params.clone_patch` |
+
+`patch` supported keys:
+
+| Key | Type | Required | Notes |
 |---|---|---|---|
-| `item_id` | string | yes | chunk item id to patch |
-| `patch` | object | yes | supported keys: `content`, `metadata`, `parent_id`, `level`, `path`, `type`, `original_format` |
-| `params` | object | no | free-form metadata persisted under `chunk_set.params.clone_patch` |
+| `content` | string | no | new chunk content |
+| `metadata` | object | no | metadata replacement for patched item |
+| `parent_id` | string \| null | no | hierarchy linkage override |
+| `level` | integer | no | hierarchy level override |
+| `path` | string[] | no | hierarchy path override |
+| `type` | string | no | type override |
+| `original_format` | string | no | source-format label override |
+
+`params` expected fields:
+
+- No required keys are enforced.
+- Recommended keys: `reason`, `editor`, `ticket`, `source`, `timestamp`.
+- API stores exactly what you send at `chunk_set.params.clone_patch`.
 
 Response `200`: `ChunkSetWithItems`
 
-## Indexes
+Behavior notes:
+
+- Clones all chunk items, patches target item, and creates derived chunk set version.
+- Lineage saved in `parent_chunk_set_version_id` and `input_refs.patched_item_id`.
+- Project active chunk set is switched to newly created set.
 
 ### POST `/api/v1/projects/{project_id}/indexes`
-
-Creates index metadata row (does not build vectors yet).
 
 Path params:
 
@@ -439,19 +698,38 @@ Path params:
 
 Request body (`CreateIndexRequest`):
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `name` | string | yes | - | display name |
-| `provider` | string | no | `qdrant` | implemented: `qdrant`, `faiss` |
-| `index_type` | string | no | `chunk_vectors` | currently treated as metadata |
-| `config` | object | no | `{}` | provider/build config |
-| `params` | object | no | `{}` | user metadata |
+| `name` | string | yes | - | logical index name |
+| `provider` | string | no | `qdrant` | Allowed: `qdrant`, `faiss`, `chroma`, `postgres` |
+| `index_type` | string | no | `chunk_vectors` | metadata label; build logic does not branch on this |
+| `config` | object | no | `{}` | provider/build config keys below |
+| `params` | object | no | `{}` | free-form index metadata |
+
+`config` keys:
+
+| Key | Type | Scope | Required | Default | Notes |
+|---|---|---|---|---|---|
+| `embedding_provider` | string | all providers | no | `mock` | embedding provider |
+| `embedding_model_name` | string \| null | all providers | no | `null` | embedding model |
+| `collection_name` | string | qdrant/chroma/postgres | no | generated | backend collection name |
+| `faiss_local_dir` | string | faiss | no | generated after build | usually produced by build |
+| `chroma_persist_directory` | string | chroma | no | generated | disk path for chroma data |
+| `connection` | string | postgres | no | `VECTOR_POSTGRES_CONNECTION` | PGVector connection string |
+
+`params` expected fields:
+
+- No required keys are enforced.
+- Recommended keys: `owner`, `purpose`, `tags`, `retention`.
 
 Response `200`: `IndexOut`
 
-### GET `/api/v1/projects/{project_id}/indexes`
+Behavior notes:
 
-Lists non-deleted indexes for project.
+- Index row is created with initial status `created`.
+- Provider validation is strict (`qdrant|faiss|chroma|postgres`), otherwise `400 invalid_index_provider`.
+
+### GET `/api/v1/projects/{project_id}/indexes`
 
 Path params:
 
@@ -459,11 +737,16 @@ Path params:
 |---|---|---|
 | `project_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `IndexOut[]`
 
-### GET `/api/v1/indexes/{index_id}`
+Behavior notes:
 
-Gets one index.
+- Returns only non-deleted indexes for project.
+- Sorted by `created_at desc`.
+
+### GET `/api/v1/indexes/{index_id}`
 
 Path params:
 
@@ -471,11 +754,15 @@ Path params:
 |---|---|---|
 | `index_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `IndexOut`
 
-### POST `/api/v1/indexes/{index_id}/builds`
+Behavior notes:
 
-Creates and optionally executes an index build.
+- Returns `404 index_not_found` when missing or soft-deleted.
+
+### POST `/api/v1/indexes/{index_id}/builds`
 
 Path params:
 
@@ -485,34 +772,29 @@ Path params:
 
 Request body (`CreateIndexBuildRequest`):
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `chunk_set_version_id` | string | yes | - | source chunks |
-| `params` | object | no | `{}` | build metadata (persisted) |
-| `execution_mode` | string | no | `sync` | `async` queues Celery job; any non-`async` value runs sync |
+| `chunk_set_version_id` | string | yes | - | source chunk set for build |
+| `params` | object | no | `{}` | free-form build metadata persisted on build |
+| `execution_mode` | string | no | `sync` | `sync` or `async` |
 
-Response `200` (sync):
+`params` expected fields:
 
-```json
-{
-  "mode": "sync",
-  "build": { "...IndexBuildOut..." }
-}
-```
+- No required keys are enforced by API.
+- Recommended keys: `trigger`, `note`, `requested_by`.
 
-Response `200` (async):
+Response `200`:
 
-```json
-{
-  "mode": "async",
-  "job_id": "string",
-  "build": { "...IndexBuildOut..." }
-}
-```
+- Sync: `{ "mode": "sync", "build": IndexBuildOut }`
+- Async: `{ "mode": "async", "job_id": "<id>", "build": IndexBuildOut }`
+
+Behavior notes:
+
+- Build is created first with status `queued`.
+- Sync mode executes build immediately and may fail with provider/dependency/config errors.
+- Async mode enqueues job type `index_build`.
 
 ### GET `/api/v1/indexes/{index_id}/builds`
-
-Lists non-deleted builds for index.
 
 Path params:
 
@@ -520,11 +802,16 @@ Path params:
 |---|---|---|
 | `index_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `IndexBuildOut[]`
 
-### GET `/api/v1/index_builds/{build_id}`
+Behavior notes:
 
-Gets one build.
+- Returns non-deleted builds for index.
+- Sorted by `created_at desc`.
+
+### GET `/api/v1/index_builds/{build_id}`
 
 Path params:
 
@@ -532,13 +819,90 @@ Path params:
 |---|---|---|
 | `build_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `IndexBuildOut`
 
-## Retrieval
+Behavior notes:
+
+- Returns `404 index_build_not_found` when missing or soft-deleted.
+
+### POST `/api/v1/projects/{project_id}/graph/builds`
+
+Path params:
+
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
+
+Request body (`CreateGraphBuildRequest`):
+
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `source_type` | string | no | `segment_set` | `segment_set` or `chunk_set` |
+| `source_id` | string | yes | - | id of source artifact matching `source_type` |
+| `backend` | string \| null | no | `null` | `neo4j` or `networkx`; `null` means service default |
+| `extract_entities` | boolean | no | `true` | run entity extraction stage |
+| `detect_communities` | boolean | no | `false` | run community detection stage |
+| `summarize_communities` | boolean | no | `false` | run community summarization stage |
+| `llm_provider` | string \| null | no | `null` | LLM provider override |
+| `llm_model` | string \| null | no | `null` | LLM model override |
+| `llm_temperature` | number \| null | no | `null` | LLM temperature override |
+| `search_depth` | integer | no | `1` | local graph retrieval depth metadata |
+| `params` | object | no | `{}` | extra free-form params merged into persisted build params |
+| `execution_mode` | string | no | `async` | `sync` or `async` |
+
+`params` expected fields:
+
+- No required keys are enforced.
+- Keys in `params` are merged into build parameters; collisions can override same-name defaults.
+- Recommended keys: `label`, `run_reason`, `owner`.
+
+Response `200`:
+
+- Sync: `{ "mode": "sync", "build": GraphBuildOut }`
+- Async: `{ "mode": "async", "job_id": "<id>", "build": GraphBuildOut }`
+
+Behavior notes:
+
+- Requires graph capability flag.
+- Sync mode runs graph pipeline immediately.
+- Async mode enqueues job type `graph_build`.
+
+### GET `/api/v1/projects/{project_id}/graph/builds`
+
+Path params:
+
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
+
+Query/body params: none.
+
+Response `200`: `GraphBuildOut[]`
+
+Behavior notes:
+
+- Returns only non-deleted graph builds for project.
+- Sorted by `created_at desc`.
+
+### GET `/api/v1/graph_builds/{graph_build_id}`
+
+Path params:
+
+| Name | Type | Required |
+|---|---|---|
+| `graph_build_id` | string | yes |
+
+Query/body params: none.
+
+Response `200`: `GraphBuildOut`
+
+Behavior notes:
+
+- Returns `404 graph_build_not_found` when missing or soft-deleted.
 
 ### POST `/api/v1/projects/{project_id}/retrieve`
-
-Runs retrieval over chunk sets, segment sets, or vector index builds.
 
 Path params:
 
@@ -548,45 +912,112 @@ Path params:
 
 Request body (`RetrieveRequest`):
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `query` | string | yes | - | user query |
-| `target` | string | no | `chunk_set` | `chunk_set`, `segment_set`, `index_build` |
-| `target_id` | string \| null | no | `null` | optional for chunk/segment targets, required for vector/dual strategies |
-| `strategy` | object | yes | - | discriminated union by `type` |
-| `persist` | boolean | no | `false` | if true, stores retrieval run + artifact |
-| `limit` | integer | no | `20` | page size (clamped to `1..200`) |
-| `cursor` | string \| null | no | `null` | Base64 offset cursor |
+| `query` | string | yes | - | retrieval query text |
+| `target` | string | no | `chunk_set` | `chunk_set`, `segment_set`, `index_build`, `graph_build` |
+| `target_id` | string \| null | no | `null` | target artifact id; requirement depends on strategy/target |
+| `strategy` | object | yes | - | discriminated union by `strategy.type`, detailed below |
+| `persist` | boolean | no | `false` | persist retrieval run artifact |
+| `limit` | integer | no | `20` | page size; clamped to `1..200` |
+| `cursor` | string \| null | no | `null` | base64 offset cursor |
+
+`strategy` by `type`:
+
+| strategy.type | Field | Type | Required | Default | Notes |
+|---|---|---|---|---|---|
+| `vector` | `k` | int | no | `10` | top-k |
+| `vector` | `search_type` | string | no | `similarity` | accepted, currently not applied in backend query path |
+| `vector` | `score_threshold` | float \| null | no | `null` | accepted, currently not applied |
+| `bm25` | `k` | int | no | `10` | top-k |
+| `regex` | `pattern` | string | yes | - | regex query pattern |
+| `fuzzy` | `threshold` | int | no | `80` | fuzzy match threshold |
+| `ensemble` | `sources` | array | no | `[]` | source list (`bm25`, `regex`, `fuzzy`) |
+| `ensemble` | `weights` | float[] \| null | no | `null` | optional blend weights |
+| `rerank` | `base` | object | yes | - | base strategy spec |
+| `rerank` | `model_name` | string | no | `BAAI/bge-reranker-base` | reranker model |
+| `rerank` | `top_n` | int | no | `5` | final reranked size |
+| `rerank` | `device` | string | no | `cpu` | runtime device |
+| `dual_storage` | `vector_search` | object | no | `{}` | supports key `k` for vector recall size |
+| `dual_storage` | `id_key` | string | no | `segment_id` | accepted, currently not used by implementation |
+| `graph` | `graph_build_id` | string | yes | - | graph build identifier |
+| `graph` | `mode` | string | no | `local` | `local` or `global` |
+| `graph` | `search_depth` | int | no | `1` | local graph traversal depth |
+| `graph_hybrid` | `graph_build_id` | string | yes | - | graph build identifier |
+| `graph_hybrid` | `mode` | string | no | `local` | `local` or `global` |
+| `graph_hybrid` | `search_depth` | int | no | `1` | graph traversal depth |
+| `graph_hybrid` | `vector` | object | no | `{"k":10,"search_type":"similarity","score_threshold":null}` | optional vector side config |
+| `graph_hybrid` | `weights` | float[] \| null | no | `null` | blend weights `[vector, graph]` |
+
+Nested object details used by retrieval implementation:
+
+| Object path | Field | Type | Required | Default | Notes |
+|---|---|---|---|---|---|
+| `strategy.ensemble.sources[]` | `type` | string | yes | - | supported: `bm25`, `regex`, `fuzzy` |
+| `strategy.ensemble.sources[]` | `k` | int | no | `8` | used when source type is `bm25` |
+| `strategy.ensemble.sources[]` | `threshold` | int | no | `75` | used when source type is `fuzzy` |
+| `strategy.rerank.base` | `type` | string | no | `bm25` | base retrieval type |
+| `strategy.rerank.base` | `k` | int | no | `20` | used by bm25 base |
+| `strategy.rerank.base` | `pattern` | string | no | query-based | used by regex base |
+| `strategy.rerank.base` | `threshold` | int | no | `75` | used by fuzzy base |
+| `strategy.dual_storage.vector_search` | `k` | int | no | `10` | vector recall size |
+| `strategy.graph_hybrid.vector` | `k` | int | no | `10` | vector top-k |
+| `strategy.graph_hybrid.vector` | `search_type` | string | no | `similarity` | accepted; backend currently similarity |
+| `strategy.graph_hybrid.vector` | `score_threshold` | float \| null | no | `null` | accepted; currently not enforced |
+
+Target/strategy requirements:
+
+| strategy/target | `target` requirement | `target_id` requirement |
+|---|---|---|
+| `vector` | must be `index_build` | required |
+| `dual_storage` | must be `index_build` | required |
+| `bm25` / `regex` / `fuzzy` / `ensemble` | `chunk_set` or `segment_set` | optional (latest active used when omitted) |
+| `rerank` with vector base | same as vector | same as vector |
+| `graph` | any target accepted, graph id comes from strategy | `target_id` not used by graph path |
+| `graph_hybrid` | vector side runs only when `target=index_build` and `target_id` present | optional unless vector side is intended |
 
 Response `200`: `RetrieveResponse`
 
-### GET `/api/v1/projects/{project_id}/retrieval_runs`
+Behavior notes:
 
-Lists non-deleted persisted retrieval runs for a project.
+- Results are paged with offset-based cursor (`limit`, `cursor`).
+- `persist=true` stores retrieval run row and artifact payload; `run_id` is returned.
+- Invalid cursor is treated as offset `0`.
+
+### GET `/api/v1/projects/{project_id}/retrieval_runs`
 
 Path params:
 
 | Name | Type | Required |
 |---|---|---|
 | `project_id` | string | yes |
+
+Query/body params: none.
 
 Response `200`: `RetrievalRunOut[]`
 
-### GET `/api/v1/retrieval_runs/{run_id}`
+Behavior notes:
 
-Gets one persisted retrieval run.
+- Returns non-deleted retrieval runs for project.
+- Sorted by `created_at desc`.
+
+### GET `/api/v1/retrieval_runs/{run_id}`
 
 Path params:
 
 | Name | Type | Required |
 |---|---|---|
 | `run_id` | string | yes |
+
+Query/body params: none.
 
 Response `200`: `RetrievalRunOut`
 
-### DELETE `/api/v1/retrieval_runs/{run_id}`
+Behavior notes:
 
-Soft-deletes retrieval run row.
+- Returns `404 retrieval_run_not_found` when missing or soft-deleted.
+
+### DELETE `/api/v1/retrieval_runs/{run_id}`
 
 Path params:
 
@@ -594,20 +1025,20 @@ Path params:
 |---|---|---|
 | `run_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`:
 
-```json
-{
-  "ok": true,
-  "run_id": "string"
-}
-```
+| Field | Type |
+|---|---|
+| `ok` | boolean |
+| `run_id` | string |
 
-## Jobs
+Behavior notes:
+
+- Soft-deletes retrieval run (`is_deleted=true`).
 
 ### GET `/api/v1/projects/{project_id}/jobs`
-
-Lists jobs for one project.
 
 Path params:
 
@@ -615,11 +1046,16 @@ Path params:
 |---|---|---|
 | `project_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `JobOut[]`
 
-### GET `/api/v1/jobs/{job_id}`
+Behavior notes:
 
-Gets one job.
+- Returns jobs for project (all statuses).
+- Sorted by `created_at desc`.
+
+### GET `/api/v1/jobs/{job_id}`
 
 Path params:
 
@@ -627,19 +1063,30 @@ Path params:
 |---|---|---|
 | `job_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `JobOut`
+
+Behavior notes:
+
+- Returns `404 job_not_found` when missing.
 
 ### GET `/api/v1/admin/jobs`
 
-Lists all jobs across projects.
+| Parameter location | Parameters |
+|---|---|
+| path | none |
+| query | none |
+| body | none |
 
 Response `200`: `JobOut[]`
 
-## Pipeline
+Behavior notes:
+
+- Returns all jobs across projects.
+- Sorted by `created_at desc`.
 
 ### POST `/api/v1/projects/{project_id}/pipeline/file`
-
-One-shot pipeline endpoint: upload -> segments -> chunks -> optional index build.
 
 Path params:
 
@@ -649,34 +1096,33 @@ Path params:
 
 Multipart form fields:
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `file` | binary file | yes | - | source file |
-| `loader_type` | string | yes | - | segment loader type |
-| `loader_params_json` | string \| null | no | `null` | JSON string for loader params |
-| `chunk_strategy` | string | no | `recursive` | chunk strategy |
-| `chunker_params_json` | string \| null | no | `null` | JSON string for chunk params |
-| `create_index` | boolean | no | `false` | enable build attempt |
-| `index_id` | string \| null | no | `null` | existing index id to build against |
-| `index_params_json` | string \| null | no | `null` | JSON string for build params |
-| `execution_mode` | string | no | `sync` | `async` queues job; any non-`async` behaves as sync |
+| `file` | binary file | yes | - | uploaded source file |
+| `loader_type` | string | yes | - | same allowed set as segment creation loader |
+| `loader_params_json` | string \| null | no | `null` | valid JSON string; parsed to object and used as segment `loader_params` |
+| `chunk_strategy` | string | no | `recursive` | same strategy set as chunk endpoint |
+| `chunker_params_json` | string \| null | no | `null` | valid JSON string; parsed to object and used as `chunker_params` |
+| `create_index` | boolean | no | `false` | whether to attempt index build stage |
+| `index_id` | string \| null | no | `null` | required to actually build index when `create_index=true` |
+| `index_params_json` | string \| null | no | `null` | valid JSON string; parsed to object and passed as index build `params` |
+| `execution_mode` | string | no | `sync` | `sync` or `async` |
 
-Behavior notes:
+JSON-form field expectations:
 
-- If `execution_mode == "async"`:
-  - returns immediately with `status="queued"` and `job_id`
-  - `document_id`, `document_version_id`, `segment_set_version_id`, `chunk_set_version_id` are empty strings in the immediate response
-- If sync:
-  - returns actual generated IDs with `status="succeeded"`
-- Index build occurs only when `create_index == true` and `index_id` is provided.
+- `loader_params_json`: same keys as segment creation `loader_params` table.
+- `chunker_params_json`: same keys as chunk endpoint `chunker_params` table.
+- `index_params_json`: free-form object persisted on index build record; no enforced keys.
 
 Response `200`: `PipelineResponse`
 
-## Artifacts
+Behavior notes:
+
+- `execution_mode=async`: returns immediately with `status="queued"` and `job_id`; ids for generated artifacts are empty strings.
+- `execution_mode=sync`: runs full pipeline and returns concrete ids with `status="succeeded"`.
+- Index build stage runs only when `create_index=true` and `index_id` is provided.
 
 ### GET `/api/v1/projects/{project_id}/artifacts`
-
-Unified artifact feed for a project (documents, versions, segment sets, chunk sets, indexes, builds, retrieval runs).
 
 Path params:
 
@@ -686,25 +1132,37 @@ Path params:
 
 Query params:
 
-| Field | Type | Required | Default | Notes |
+| Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
-| `limit` | integer | no | settings default (20) | min 1, max 200 |
-| `cursor` | string \| null | no | `null` | Base64 offset cursor |
+| `limit` | integer | no | settings default (`20`) | `>=1`; clamped to max `200` |
+| `cursor` | string \| null | no | `null` | base64 offset cursor; invalid cursor treated as offset `0` |
+
+Request body: none.
 
 Response `200`:
 
-```json
-{
-  "items": [{ "...ArtifactOut..." }],
-  "next_cursor": "string-or-null",
-  "has_more": true,
-  "total": 123
-}
-```
+| Field | Type | Notes |
+|---|---|---|
+| `items` | `ArtifactOut[]` | unified artifact stream |
+| `next_cursor` | string \| null | cursor for next page |
+| `has_more` | boolean | pagination flag |
+| `total` | integer | total items before slicing |
+
+Behavior notes:
+
+- Includes artifact kinds: `document`, `document_version`, `segment_set`, `chunk_set`, `index`, `index_build`, `graph_build`, `retrieval_run`.
+- Sorted by artifact `created_at desc` across all kinds.
+- `items[].metadata` keys vary by artifact kind:
+  - `document`: `filename`
+  - `document_version`: `document_id`, `status`
+  - `segment_set`: `document_version_id`, `is_active`
+  - `chunk_set`: `segment_set_version_id`, `is_active`
+  - `index`: `name`, `provider`
+  - `index_build`: `index_id`, `status`, `is_active`
+  - `graph_build`: `source_type`, `source_id`, `backend`, `status`
+  - `retrieval_run`: `strategy`, `target_type`
 
 ### DELETE `/api/v1/artifacts/{artifact_id}`
-
-Soft-deletes one artifact row.
 
 Path params:
 
@@ -716,13 +1174,16 @@ Request body (`SoftDeleteRequest`):
 
 | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `reason` | string \| null | no | `null` | audit reason |
+| `reason` | string \| null | no | `null` | audit reason text persisted in delete log |
 
 Response `200`: `DeleteResponse`
 
-### POST `/api/v1/artifacts/{artifact_id}/restore`
+Behavior notes:
 
-Restores previously soft-deleted artifact.
+- Performs soft delete only (`is_deleted=true`) and writes delete audit row.
+- Returns `404 artifact_not_found` when id does not resolve.
+
+### POST `/api/v1/artifacts/{artifact_id}/restore`
 
 Path params:
 
@@ -730,7 +1191,45 @@ Path params:
 |---|---|---|
 | `artifact_id` | string | yes |
 
+Query/body params: none.
+
 Response `200`: `RestoreResponse`
+
+Behavior notes:
+
+- Restores previously soft-deleted artifact by setting `is_deleted=false`.
+- Updates most recent unresolved delete audit record with `restored_at` when present.
+
+### POST `/api/v1/tables/summarize`
+
+Path/query params: none.
+
+Request body (`TableSummarizeRequest`):
+
+| Field | Type | Required | Default | Constraints / behavior |
+|---|---|---|---|---|
+| `markdown_table` | string | yes | - | min length `1`; markdown table text |
+| `summarizer` | object | no | `{"type":"mock"}` | summarizer config |
+
+`summarizer` nested fields:
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `type` | string | no | `mock` | `mock` or `llm` |
+| `llm_provider` | string \| null | no | `null` | used with `type=llm` |
+| `model` | string \| null | no | `null` | used with `type=llm` |
+| `temperature` | number \| null | no | `null` | used with `type=llm` |
+
+Behavior notes:
+
+- `type=llm` requires `FEATURE_ENABLE_LLM=true` and valid provider credentials.
+
+Response `200`: `TableSummarizeResponse`
+
+| Field | Type | Notes |
+|---|---|---|
+| `summary` | string | generated summary text |
+| `summarizer_type` | string | `mock` or `llm` |
 
 ## Segment and Chunk Details (Strategies, Types, Options)
 
@@ -986,6 +1485,8 @@ Hierarchy propagation during regex chunking:
 |---|---|---|
 | `qdrant` | Embeds chunks, creates/upserts Qdrant collection | Vector and dual-storage retrieval supported |
 | `faiss` | Builds local FAISS index in `artifacts/faiss/<project>/<index>/<build>` | Vector retrieval via local FAISS load |
+| `chroma` | Builds/persists Chroma collection on local disk | Vector retrieval via Chroma similarity search |
+| `postgres` | Writes vectors to PGVector collection/table | Vector retrieval via PGVector similarity search |
 
 Any other provider returns `501 provider_unsupported` for build/retrieval execution.
 
@@ -997,10 +1498,12 @@ Default is `chunk_vectors`. It is persisted as metadata; current build logic doe
 
 | Config field | Scope | Default | Notes |
 |---|---|---|---|
-| `embedding_provider` | qdrant/faiss build + vector retrieval | `mock` | `mock` uses deterministic mock embeddings |
-| `embedding_model_name` | qdrant/faiss | `null` | forwarded to embedding factory when provider != `mock` |
+| `embedding_provider` | all provider builds + vector retrieval | `mock` | `mock` uses deterministic mock embeddings |
+| `embedding_model_name` | all providers | `null` | forwarded to embedding factory when provider != `mock` |
 | `collection_name` | qdrant | generated `rag_api_<project_id>_<index_id>` | custom Qdrant collection name |
 | `faiss_local_dir` | faiss | generated during build | populated after successful FAISS build |
+| `chroma_persist_directory` | chroma | generated under `./artifacts/chroma/...` | persisted chroma data path |
+| `connection` | postgres | from `VECTOR_POSTGRES_CONNECTION` | PGVector connection string |
 
 ## Build statuses and lifecycle
 
@@ -1096,6 +1599,7 @@ Constraints:
 | `chunk_set` | no (optional) | chunk items (if missing, latest active chunk set is used) |
 | `segment_set` | no (optional) | segment items (if missing, latest active segment set is used) |
 | `index_build` | yes for vector/dual | vector index build + provider-specific backend |
+| `graph_build` | yes for graph strategy fields | graph build used by `graph` and `graph_hybrid` strategies |
 
 ## Async Processing Model
 
@@ -1109,6 +1613,18 @@ Async modes create `Job` rows and run Celery tasks:
   - endpoint: `POST /api/v1/projects/{project_id}/pipeline/file` with `execution_mode="async"`
   - task: `run_pipeline`
   - job type: `pipeline`
+- graph build async:
+  - endpoint: `POST /api/v1/projects/{project_id}/graph/builds` with `execution_mode="async"`
+  - task: `run_graph_build`
+  - job type: `graph_build`
+- segment enrich async:
+  - endpoint: `POST /api/v1/segment_sets/{segment_set_id}/enrich` with `execution_mode="async"`
+  - task: `run_segment_enrich`
+  - job type: `segment_enrich`
+- segment raptor async:
+  - endpoint: `POST /api/v1/segment_sets/{segment_set_id}/raptor` with `execution_mode="async"`
+  - task: `run_segment_raptor`
+  - job type: `segment_raptor`
 
 Job statuses:
 
@@ -1127,6 +1643,7 @@ Soft delete/restore supports these artifact kinds:
 - `chunk_set`
 - `index`
 - `index_build`
+- `graph_build`
 - `retrieval_run`
 
 Soft delete only toggles DB flags and tracks delete/restore audit rows. It does not remove object-store files.

@@ -74,7 +74,7 @@ def test_pipeline_sync_end_to_end_with_faiss_index_and_retrieval(client, fixture
         f"/api/v1/projects/{project_id}/pipeline/file",
         files=files,
         data={
-            "loader_type": "qa",
+            "loader_type": "text",
             "loader_params_json": "{}",
             "chunk_strategy": "regex",
             "chunker_params_json": '{"pattern":"\\nQ: "}',
@@ -117,7 +117,7 @@ def test_pipeline_sync_without_index_supports_unindexed_retrieval(client, fixtur
         f"/api/v1/projects/{project_id}/pipeline/file",
         files=files,
         data={
-            "loader_type": "qa",
+            "loader_type": "text",
             "loader_params_json": "{}",
             "chunk_strategy": "regex",
             "chunker_params_json": '{"pattern":"\\nQ: "}',
@@ -159,7 +159,7 @@ def test_pipeline_async_end_to_end_job_visibility(client, monkeypatch, fixture_i
         f"/api/v1/projects/{project_id}/pipeline/file",
         files=files,
         data={
-            "loader_type": "qa",
+            "loader_type": "text",
             "loader_params_json": "{}",
             "chunk_strategy": "regex",
             "chunker_params_json": '{"pattern":"\\nQ: "}',

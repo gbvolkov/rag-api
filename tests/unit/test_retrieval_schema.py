@@ -5,7 +5,7 @@ def test_graph_strategy_schema_parses():
     payload = {
         "query": "alpha",
         "target": "graph_build",
-        "strategy": {"type": "graph", "graph_build_id": "g1", "mode": "local", "search_depth": 2},
+        "strategy": {"type": "graph", "graph_build_id": "g1", "mode": "local", "max_hops": 2},
     }
     parsed = RetrieveRequest(**payload)
     assert parsed.strategy.type == "graph"
@@ -29,4 +29,3 @@ def test_graph_hybrid_strategy_schema_parses():
     assert parsed.strategy.type == "graph_hybrid"
     assert parsed.strategy.graph_build_id == "g1"
     assert parsed.strategy.vector["k"] == 5
-

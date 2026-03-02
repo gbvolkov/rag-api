@@ -3,7 +3,14 @@ from app.schemas.chunk import ChunkFromSegmentRequest, ChunkItemOut, ChunkSetOut
 from app.schemas.common import CursorPage, DeleteResponse, RestoreResponse, SoftDeleteRequest
 from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.schemas.graph import CreateGraphBuildRequest, GraphBuildOut
-from app.schemas.indexing import CreateIndexBuildRequest, CreateIndexRequest, IndexBuildOut, IndexOut
+from app.schemas.indexing import (
+    CreateIndexBuildRequest,
+    CreateIndexRequest,
+    IndexBuildDocStoreConfig,
+    IndexBuildDocStoreOut,
+    IndexBuildOut,
+    IndexOut,
+)
 from app.schemas.job import JobOut
 from app.schemas.pipeline import PipelineRequestMeta, PipelineResponse
 from app.schemas.project import CreateProjectRequest, ProjectDeleteResponse, ProjectOut, ProjectSettings, UpdateProjectRequest
@@ -36,6 +43,8 @@ __all__ = [
     "GraphBuildOut",
     "CreateIndexBuildRequest",
     "CreateIndexRequest",
+    "IndexBuildDocStoreConfig",
+    "IndexBuildDocStoreOut",
     "IndexBuildOut",
     "IndexOut",
     "JobOut",
