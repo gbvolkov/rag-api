@@ -1,5 +1,4 @@
 import io
-from dataclasses import dataclass
 
 from langchain_core.documents import Document as LCDocument
 
@@ -71,6 +70,21 @@ def test_example_03_graph_workflow_api_only(client, monkeypatch):
     project_id = _create_project(client, "ex03-graph-workflow")
     version_id = _upload_document(client, project_id, content=b"# Task\nalpha beta\n## Details\ngraph links")
     segment_set_id = _create_segments_from_version(client, version_id, "text")
+    chunk_set_id = _create_chunks(client, segment_set_id, "regex", {"pattern": " "})
+
+    idx = client.post(
+        f"/api/v1/projects/{project_id}/indexes",
+        json={"name": "ex03-faiss", "provider": "faiss", "index_type": "chunk_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
+    )
+    assert idx.status_code == 200, idx.text
+    index_id = idx.json()["index_id"]
+
+    idx_build = client.post(
+        f"/api/v1/indexes/{index_id}/builds",
+        json={"chunk_set_version_id": chunk_set_id, "params": {}, "execution_mode": "sync"},
+    )
+    assert idx_build.status_code == 200, idx_build.text
+    index_build_id = idx_build.json()["build"]["build_id"]
 
     build = client.post(
         f"/api/v1/projects/{project_id}/graph/builds",
@@ -81,6 +95,7 @@ def test_example_03_graph_workflow_api_only(client, monkeypatch):
             "extract_entities": False,
             "detect_communities": False,
             "summarize_communities": False,
+            "params": {"index_build_id": index_build_id},
             "execution_mode": "sync",
         },
     )
@@ -141,41 +156,7 @@ def test_example_02_raptor_workflow_api_only(client, monkeypatch):
     assert len(runs.json()) >= 1
 
 
-@dataclass
-class _Hit:
-    payload: dict
-    score: float
-
-
-class _DummyQdrantClient:
-    class _QueryResult:
-        def __init__(self, points):
-            self.points = points
-
-    class _Collections:
-        def __init__(self):
-            self.collections = []
-
-    def __init__(self, hits):
-        self._hits = hits
-
-    def get_collections(self):
-        return self._Collections()
-
-    def create_collection(self, *args, **kwargs):
-        return None
-
-    def upsert(self, *args, **kwargs):
-        return None
-
-    def search(self, *args, **kwargs):
-        return self._hits
-
-    def query_points(self, *args, **kwargs):
-        return self._QueryResult(self._hits)
-
-
-def test_example_13_dual_storage_api_only(client, monkeypatch):
+def test_example_13_dual_storage_api_only(client):
     project_id = _create_project(client, "ex13-dual-storage")
     version_id = _upload_document(client, project_id, content=b"dual storage alpha beta")
     segment_set_id = _create_segments_from_version(client, version_id, "text")
@@ -183,12 +164,11 @@ def test_example_13_dual_storage_api_only(client, monkeypatch):
 
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
-        json={"name": "ex13-qdrant", "provider": "qdrant", "index_type": "chunk_vectors", "config": {}, "params": {}},
+        json={"name": "ex13-faiss", "provider": "faiss", "index_type": "chunk_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
 
-    monkeypatch.setattr("app.services.index_service.get_qdrant_client", lambda: _DummyQdrantClient([]))
     build = client.post(
         f"/api/v1/indexes/{index_id}/builds",
         json={
@@ -200,11 +180,6 @@ def test_example_13_dual_storage_api_only(client, monkeypatch):
     )
     assert build.status_code == 200, build.text
     build_id = build.json()["build"]["build_id"]
-
-    chunk_payload = client.get(f"/api/v1/chunk_sets/{chunk_set_id}").json()
-    first_chunk = chunk_payload["items"][0]
-    hits = [_Hit(payload={"chunk_item_id": first_chunk["item_id"]}, score=0.9)]
-    monkeypatch.setattr("app.services.retrieval_service.get_qdrant_client", lambda: _DummyQdrantClient(hits))
 
     ret = client.post(
         f"/api/v1/projects/{project_id}/retrieve",

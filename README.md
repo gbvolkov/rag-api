@@ -375,7 +375,7 @@ Request body (`CreateSegmentsRequest`):
 | `pdf.table_summarizer` | `llm_provider` | string \| null | no | settings default | used when `type=llm` |
 | `pdf.table_summarizer` | `model` | string \| null | no | settings default | used when `type=llm` |
 | `pdf.table_summarizer` | `temperature` | number \| null | no | settings default | used when `type=llm` |
-| `miner_u` | `fallback_to_pdf_loader` | boolean | no | `true` | fallback to PDF loader on dependency/runtime failure |
+| `miner_u` | `parse_mode`, `backend`, `lang`, `server_url`, `start_page`, `end_page`, `parse_formula`, `parse_table`, `device`, `vram`, `source`, `timeout_seconds`, `keep_temp_artifacts` | mixed | no | loader defaults | strict MinerU contract only; no API-level fallback to PDF |
 | `docx` | `regex_patterns` | array | no | `null` | extra heading detection/splitting rules |
 | `docx` | `exclude_patterns` | string[] | no | `[]` | regex exclusions |
 | `docx` | `include_parent_content` | boolean | no | `true` | parent-content inclusion for docx regex post-splitting |
@@ -410,7 +410,7 @@ Important error behavior:
 - `loader_type=regex` with missing/empty `patterns` -> `400 invalid_loader_params`
 - unsupported `loader_type` (and no `source_text`) -> `400 unsupported_loader`
 - `loader_type=miner_u` when feature disabled -> `403 capability_disabled`
-- `loader_type=miner_u` dependency missing and `fallback_to_pdf_loader=false` -> dependency/runtime error
+- `loader_type=miner_u` dependency missing -> explicit dependency/runtime error (no fallback)
 
 Response `200`: `SegmentSetWithItems`
 
@@ -854,9 +854,9 @@ Request body (`CreateGraphBuildRequest`):
 
 `params` expected fields:
 
-- No required keys are enforced.
+- Required for graph retrieval: `index_build_id` (must reference a succeeded index build in the same project).
 - Keys in `params` are merged into build parameters; collisions can override same-name defaults.
-- Recommended keys: `label`, `run_reason`, `owner`.
+- Optional metadata keys: `label`, `run_reason`, `owner`.
 
 Response `200`:
 
@@ -927,25 +927,25 @@ Request body (`RetrieveRequest`):
 | strategy.type | Field | Type | Required | Default | Notes |
 |---|---|---|---|---|---|
 | `vector` | `k` | int | no | `10` | top-k |
-| `vector` | `search_type` | string | no | `similarity` | accepted, currently not applied in backend query path |
-| `vector` | `score_threshold` | float \| null | no | `null` | accepted, currently not applied |
+| `vector` | `search_type` | string | no | `similarity` | strict enum: `similarity`, `similarity_score_threshold`, `mmr` |
+| `vector` | `score_threshold` | float \| null | no | `null` | applied by rag-lib vector retriever |
 | `bm25` | `k` | int | no | `10` | top-k |
 | `regex` | `pattern` | string | yes | - | regex query pattern |
 | `fuzzy` | `threshold` | int | no | `80` | fuzzy match threshold |
-| `ensemble` | `sources` | array | no | `[]` | source list (`bm25`, `regex`, `fuzzy`) |
+| `ensemble` | `sources` | array | no | `[]` | source list (`bm25`, `regex`, `fuzzy`, `vector`) |
 | `ensemble` | `weights` | float[] \| null | no | `null` | optional blend weights |
 | `rerank` | `base` | object | yes | - | base strategy spec |
 | `rerank` | `model_name` | string | no | `BAAI/bge-reranker-base` | reranker model |
 | `rerank` | `top_n` | int | no | `5` | final reranked size |
 | `rerank` | `device` | string | no | `cpu` | runtime device |
 | `dual_storage` | `vector_search` | object | no | `{}` | supports key `k` for vector recall size |
-| `dual_storage` | `id_key` | string | no | `segment_id` | accepted, currently not used by implementation |
+| `dual_storage` | `id_key` | string | no | `parent_id` | must match index build `doc_store.id_key` |
 | `graph` | `graph_build_id` | string | yes | - | graph build identifier |
-| `graph` | `mode` | string | no | `local` | `local` or `global` |
-| `graph` | `search_depth` | int | no | `1` | local graph traversal depth |
+| `graph` | `mode` | string | no | `hybrid` | `local`, `global`, `hybrid`, `mix` |
+| `graph` | `search_depth` | int | no | `1` | build metadata; retrieval depth controlled by graph config |
 | `graph_hybrid` | `graph_build_id` | string | yes | - | graph build identifier |
-| `graph_hybrid` | `mode` | string | no | `local` | `local` or `global` |
-| `graph_hybrid` | `search_depth` | int | no | `1` | graph traversal depth |
+| `graph_hybrid` | `mode` | string | no | `hybrid` | `local`, `global`, `hybrid`, `mix` |
+| `graph_hybrid` | `search_depth` | int | no | `1` | build metadata; retrieval depth controlled by graph config |
 | `graph_hybrid` | `vector` | object | no | `{"k":10,"search_type":"similarity","score_threshold":null}` | optional vector side config |
 | `graph_hybrid` | `weights` | float[] \| null | no | `null` | blend weights `[vector, graph]` |
 
@@ -962,8 +962,8 @@ Nested object details used by retrieval implementation:
 | `strategy.rerank.base` | `threshold` | int | no | `75` | used by fuzzy base |
 | `strategy.dual_storage.vector_search` | `k` | int | no | `10` | vector recall size |
 | `strategy.graph_hybrid.vector` | `k` | int | no | `10` | vector top-k |
-| `strategy.graph_hybrid.vector` | `search_type` | string | no | `similarity` | accepted; backend currently similarity |
-| `strategy.graph_hybrid.vector` | `score_threshold` | float \| null | no | `null` | accepted; currently not enforced |
+| `strategy.graph_hybrid.vector` | `search_type` | string | no | `similarity` | strict enum: `similarity`, `similarity_score_threshold`, `mmr` |
+| `strategy.graph_hybrid.vector` | `score_threshold` | float \| null | no | `null` | passed to vector retriever |
 
 Target/strategy requirements:
 
@@ -973,6 +973,7 @@ Target/strategy requirements:
 | `dual_storage` | must be `index_build` | required |
 | `bm25` / `regex` / `fuzzy` / `ensemble` | `chunk_set` or `segment_set` | optional (latest active used when omitted) |
 | `rerank` with vector base | same as vector | same as vector |
+| `graph` / `graph_hybrid` | must be `graph_build` | required; graph build params must include `index_build_id` |
 | `graph` | any target accepted, graph id comes from strategy | `target_id` not used by graph path |
 | `graph_hybrid` | vector side runs only when `target=index_build` and `target_id` present | optional unless vector side is intended |
 
@@ -1240,7 +1241,7 @@ Used by `POST /api/v1/document_versions/{version_id}/segments` when `source_text
 | Loader `loader_type` | Supported params (`loader_params`) | Notes |
 |---|---|---|
 | `pdf` | `backend` | Delegates to `rag_lib.loaders.pdf.PDFLoader` |
-| `miner_u` | `fallback_to_pdf_loader` (default `true`) | Delegates to `rag_lib.loaders.miner_u.MinerULoader` when feature + dependency are enabled |
+| `miner_u` | `parse_mode`, `backend`, `lang`, `server_url`, `start_page`, `end_page`, `parse_formula`, `parse_table`, `device`, `vram`, `source`, `timeout_seconds`, `keep_temp_artifacts` | Strict MinerU behavior; no API fallback to PDF loader |
 | `docx` | `regex_patterns`, `exclude_patterns`, `include_parent_content` (default `true`) | Structured loader |
 | `csv` | `chunk_size` | CSV loader |
 | `excel` | none | Excel loader |
@@ -1483,10 +1484,10 @@ Hierarchy propagation during regex chunking:
 
 | Provider | Build behavior | Retrieval behavior |
 |---|---|---|
-| `qdrant` | Embeds chunks, creates/upserts Qdrant collection | Vector and dual-storage retrieval supported |
-| `faiss` | Builds local FAISS index in `artifacts/faiss/<project>/<index>/<build>` | Vector retrieval via local FAISS load |
-| `chroma` | Builds/persists Chroma collection on local disk | Vector retrieval via Chroma similarity search |
-| `postgres` | Writes vectors to PGVector collection/table | Vector retrieval via PGVector similarity search |
+| `qdrant` | Uses `rag_lib.vectors.factory.create_vector_store` + `rag_lib.core.Indexer` | Retrieval uses the same rag-lib factory path |
+| `faiss` | Uses `rag_lib.vectors.factory.create_vector_store` + `rag_lib.core.Indexer`, then persists local artifact | Retrieval loads persisted FAISS artifact after rag-lib factory initialization |
+| `chroma` | Uses `rag_lib.vectors.factory.create_vector_store` + `rag_lib.core.Indexer` | Retrieval uses the same rag-lib factory path |
+| `postgres` | Uses `rag_lib.vectors.factory.create_vector_store` + `rag_lib.core.Indexer` | Retrieval uses the same rag-lib factory path |
 
 Any other provider returns `501 provider_unsupported` for build/retrieval execution.
 
@@ -1500,9 +1501,8 @@ Default is `chunk_vectors`. It is persisted as metadata; current build logic doe
 |---|---|---|---|
 | `embedding_provider` | all provider builds + vector retrieval | `mock` | `mock` uses deterministic mock embeddings |
 | `embedding_model_name` | all providers | `null` | forwarded to embedding factory when provider != `mock` |
-| `collection_name` | qdrant | generated `rag_api_<project_id>_<index_id>` | custom Qdrant collection name |
+| `collection_name` | qdrant/chroma/postgres | generated `rag_api_<project_id>_<index_id>` | collection/table name used by rag-lib factory |
 | `faiss_local_dir` | faiss | generated during build | populated after successful FAISS build |
-| `chroma_persist_directory` | chroma | generated under `./artifacts/chroma/...` | persisted chroma data path |
 | `connection` | postgres | from `VECTOR_POSTGRES_CONNECTION` | PGVector connection string |
 
 ## Build statuses and lifecycle
@@ -1529,8 +1529,8 @@ Index status transitions:
 |---|---|---|---|
 | `type` | literal `"vector"` | - | required discriminator |
 | `k` | int | `10` | top-k hits |
-| `search_type` | string | `similarity` | accepted but currently not applied in backend query |
-| `score_threshold` | float \| null | `null` | accepted but currently not applied |
+| `search_type` | string | `similarity` | strict enum: `similarity`, `similarity_score_threshold`, `mmr` |
+| `score_threshold` | float \| null | `null` | passed to rag-lib vector retriever |
 
 Constraints:
 
@@ -1565,7 +1565,7 @@ Constraints:
 | `sources` | array | `[]` | each source typically `bm25`, `regex`, or `fuzzy` |
 | `weights` | number[] \| null | `null` | optional blend weights |
 
-If `sources` is empty, service uses default ensemble composition (BM25 when available + regex + fuzzy).
+If `sources` is empty, service uses default ensemble composition (BM25 + regex + fuzzy).
 
 ### `rerank`
 
@@ -1585,12 +1585,12 @@ If `base.type == "vector"`, same target constraints as vector apply (`target=ind
 |---|---|---|---|
 | `type` | literal `"dual_storage"` | - | discriminator |
 | `vector_search` | object | `{}` | `k` is used for vector recall |
-| `id_key` | string | `segment_id` | currently accepted but not used by implementation |
+| `id_key` | string | `parent_id` | must match index build `doc_store.id_key` |
 
 Constraints:
 
 - Requires `target="index_build"` and non-null `target_id`.
-- Currently supports only qdrant-backed index builds.
+- Supported for all currently supported vector index providers (`qdrant`, `faiss`, `chroma`, `postgres`) when build includes `doc_store`.
 
 ## Retrieval target semantics
 

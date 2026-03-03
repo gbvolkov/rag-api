@@ -7,7 +7,6 @@ from app.schemas.graph import CreateGraphBuildRequest, GraphBuildOut
 from app.services.graph_service import GraphService
 from app.services.index_service import IndexService
 from app.services.serializers import graph_build_out
-from app.workers.tasks import run_graph_build
 
 router = APIRouter()
 
@@ -39,6 +38,8 @@ async def create_graph_build(
     )
 
     if request.execution_mode == "async":
+        from app.workers.tasks import run_graph_build
+
         job_svc = IndexService(session)
         job = await job_svc.create_job(
             project_id=project_id,
@@ -68,4 +69,3 @@ async def get_graph_build(graph_build_id: str, session: AsyncSession = Depends(g
     svc = GraphService(session)
     row = await svc.get_build(graph_build_id)
     return graph_build_out(row)
-

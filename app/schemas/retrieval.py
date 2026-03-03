@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class VectorConfig(BaseModel):
     type: Literal["vector"] = "vector"
     k: int = 10
-    search_type: str = "similarity"
+    search_type: Literal["similarity", "similarity_score_threshold", "mmr"] = "similarity"
     score_threshold: float | None = None
     filter: dict[str, Any] | None = None
 

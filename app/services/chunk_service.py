@@ -1,4 +1,5 @@
 import uuid
+from typing import Any, Callable
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -209,12 +210,15 @@ class ChunkService:
         return out
 
     def _build_chunker(self, strategy: str, params: dict):
+        length_function = self._resolve_length_function(params, error_code="invalid_chunker_params")
+
         if strategy == "recursive":
             from rag_lib.chunkers.recursive import RecursiveCharacterTextSplitter
 
             return RecursiveCharacterTextSplitter(
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
                 separators=params.get("separators"),
                 keep_separator=bool(params.get("keep_separator", False)),
                 is_separator_regex=bool(params.get("is_separator_regex", False)),
@@ -225,6 +229,7 @@ class ChunkService:
             return TokenTextSplitter(
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
                 model_name=params.get("model_name", "cl100k_base"),
                 encoding_name=params.get("encoding_name"),
             )
@@ -234,6 +239,7 @@ class ChunkService:
             return SentenceSplitter(
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
                 language=params.get("language", "auto"),
             )
         if strategy == "regex":
@@ -246,6 +252,7 @@ class ChunkService:
                 pattern=pattern,
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
             )
         if strategy == "markdown_table":
             from rag_lib.chunkers.markdown_table import MarkdownTableSplitter
@@ -283,8 +290,12 @@ class ChunkService:
             from rag_lib.chunkers.json import JsonSplitter
 
             return JsonSplitter(
+                min_chunk_size=int(params.get("min_chunk_size", 0)),
                 schema=params.get("schema", "."),
-                schema_dialect=params.get("schema_dialect", "dot_path"),
+                schema_dialect=self._resolve_schema_dialect(
+                    params.get("schema_dialect", "dot_path"),
+                    error_code="invalid_chunker_params",
+                ),
                 ensure_ascii=bool(params.get("ensure_ascii", False)),
                 metadata_value_max_len=params.get("metadata_value_max_len", 256),
             )
@@ -305,6 +316,7 @@ class ChunkService:
                 summarize_table=params.get("summarize_table", True),
                 summarize_chunks=params.get("summarize_chunks", False),
                 inject_summaries_into_content=params.get("inject_summaries_into_content", False),
+                length_function=length_function,
             )
         if strategy == "html":
             from rag_lib.chunkers.html import HTMLSplitter
@@ -351,6 +363,71 @@ class ChunkService:
 
         raise api_error(400, "unsupported_chunk_strategy", "Unsupported chunk strategy", {"strategy": strategy})
 
+    def _resolve_length_function(self, params: dict[str, Any], *, error_code: str) -> Callable[[str], int]:
+        mode = str(params.get("length_mode", "string_len")).strip().lower()
+        if mode == "string_len":
+            return len
+        if mode != "token_len":
+            raise api_error(
+                400,
+                error_code,
+                "length_mode must be string_len or token_len",
+                {"length_mode": mode, "allowed": ["string_len", "token_len"]},
+            )
+
+        cfg = params.get("length_mode_config")
+        if cfg is not None and not isinstance(cfg, dict):
+            raise api_error(400, error_code, "length_mode_config must be an object", {"length_mode_config": cfg})
+        cfg = cfg or {}
+
+        encoding_name = cfg.get("encoding_name") or params.get("encoding_name")
+        model_name = cfg.get("model_name") or params.get("model_name")
+        default_encoding = "cl100k_base"
+
+        try:
+            import tiktoken
+        except Exception as exc:
+            raise api_error(
+                424,
+                "missing_dependency",
+                "token_len length_mode requires tiktoken dependency",
+                {"dependency": "tiktoken"},
+            ) from exc
+
+        try:
+            if encoding_name:
+                encoding = tiktoken.get_encoding(str(encoding_name))
+            elif model_name:
+                encoding = tiktoken.encoding_for_model(str(model_name))
+            else:
+                encoding = tiktoken.get_encoding(default_encoding)
+        except Exception as exc:
+            raise api_error(
+                400,
+                error_code,
+                "Invalid token_len configuration for length_mode",
+                {"encoding_name": encoding_name, "model_name": model_name, "default_encoding": default_encoding, "error": str(exc)},
+            ) from exc
+
+        def _token_len(value: str) -> int:
+            return len(encoding.encode(value or ""))
+
+        return _token_len
+
+    def _resolve_schema_dialect(self, raw_value: Any, *, error_code: str):
+        from rag_lib.loaders.data_loaders import SchemaDialect
+
+        candidate = SchemaDialect.DOT_PATH.value if raw_value in {None, ""} else str(raw_value)
+        try:
+            return SchemaDialect(candidate)
+        except Exception as exc:
+            raise api_error(
+                400,
+                error_code,
+                "schema_dialect must be a supported SchemaDialect value",
+                {"schema_dialect": raw_value, "allowed": [SchemaDialect.DOT_PATH.value]},
+            ) from exc
+
     def _build_table_summarizer(self, cfg: dict | None):
         if not cfg:
             return None
@@ -381,7 +458,11 @@ class ChunkService:
             )
         except Exception as exc:
             raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
-        return LLMTableSummarizer(llm=llm)
+        return LLMTableSummarizer(
+            llm=llm,
+            prompt_template=cfg.get("prompt_template"),
+            soft_max_chars=cfg.get("soft_max_chars"),
+        )
 
     def _split(self, chunker, strategy: str, text: str):
         if strategy == "markdown_table":

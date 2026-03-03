@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from langchain_core.documents import Document as LCDocument
+from langchain_core.retrievers import BaseRetriever
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,10 +11,17 @@ from app.core.config import settings
 from app.core.errors import api_error
 from app.core.pagination import encode_cursor, paginate
 from app.models import ChunkItem, ChunkSetVersion, Index, IndexBuild, RetrievalRun, SegmentItem, SegmentSetVersion
-from app.schemas.retrieval import RetrieveRequest, RetrieveResponse, RetrievedDocument, VectorConfig
+from app.schemas.retrieval import RetrieveRequest, RetrieveResponse, RetrievedDocument
+from app.services.vector_store_adapter import create_vector_store_for_retrieval
 from app.storage.keys import uri_to_key
 from app.storage.object_store import object_store
-from app.storage.qdrant import get_qdrant_client
+
+
+class _StaticRetriever(BaseRetriever):
+    documents: list[LCDocument]
+
+    def _get_relevant_documents(self, query: str, *, run_manager) -> list[LCDocument]:
+        return list(self.documents)
 
 
 class RetrievalService:
@@ -154,182 +162,74 @@ class RetrievalService:
         raise api_error(400, "unsupported_target", "Unindexed retrieval target must be chunk_set, segment_set, or index_build", {"target": target})
 
     async def _run_vector(self, project_id: str, request: RetrieveRequest) -> list[LCDocument]:
-        if request.target != "index_build":
-            raise api_error(400, "invalid_target", "Vector strategy requires target=index_build", {"target": request.target})
-        if not request.target_id:
-            raise api_error(400, "missing_target_id", "target_id is required for vector retrieval")
+        _, index_row = await self._resolve_index_build(project_id, request.target, request.target_id)
+        retriever = self._build_vector_retriever(
+            index_row=index_row,
+            k=request.strategy.k,
+            search_type=request.strategy.search_type,
+            score_threshold=request.strategy.score_threshold,
+            metadata_filter=request.strategy.filter,
+        )
+        return list(retriever.invoke(request.query))
 
-        build = await self.session.get(IndexBuild, request.target_id)
+    async def _resolve_index_build(self, project_id: str, target: str, target_id: str | None) -> tuple[IndexBuild, Index]:
+        if target != "index_build":
+            raise api_error(400, "invalid_target", "Vector-backed strategy requires target=index_build", {"target": target})
+        if not target_id:
+            raise api_error(400, "missing_target_id", "target_id is required for target=index_build")
+
+        build = await self.session.get(IndexBuild, target_id)
         if not build or build.project_id != project_id or build.is_deleted:
-            raise api_error(404, "index_build_not_found", "Index build not found", {"build_id": request.target_id})
+            raise api_error(404, "index_build_not_found", "Index build not found", {"build_id": target_id})
+        if build.status != "succeeded":
+            raise api_error(
+                409,
+                "index_build_not_ready",
+                "Index build is not ready for retrieval",
+                {"build_id": build.build_id, "status": build.status},
+            )
 
         index_row = await self.session.get(Index, build.index_id)
         if not index_row or index_row.is_deleted:
             raise api_error(404, "index_not_found", "Index not found", {"index_id": build.index_id})
-        provider = index_row.provider.lower()
-        if provider not in {"qdrant", "faiss", "chroma", "postgres"}:
-            raise api_error(501, "provider_unsupported", "Provider is not implemented", {"provider": provider})
+        if index_row.provider.lower() not in {"qdrant", "faiss", "chroma", "postgres"}:
+            raise api_error(501, "provider_unsupported", "Provider is not implemented", {"provider": index_row.provider})
+        return build, index_row
 
-        if provider == "faiss":
-            return self._run_vector_faiss(
-                index_row=index_row,
-                query=request.query,
-                k=request.strategy.k,
-                search_type=request.strategy.search_type,
-                score_threshold=request.strategy.score_threshold,
-                metadata_filter=request.strategy.filter,
-            )
-        if provider == "chroma":
-            return self._run_vector_chroma(
-                index_row=index_row,
-                query=request.query,
-                k=request.strategy.k,
-                search_type=request.strategy.search_type,
-                score_threshold=request.strategy.score_threshold,
-                metadata_filter=request.strategy.filter,
-            )
-        if provider == "postgres":
-            return self._run_vector_postgres(
-                index_row=index_row,
-                query=request.query,
-                k=request.strategy.k,
-                search_type=request.strategy.search_type,
-                score_threshold=request.strategy.score_threshold,
-                metadata_filter=request.strategy.filter,
-            )
-
-        collection = index_row.config_json.get(
-            "collection_name",
-            f"{settings.default_vector_collection_prefix}_{index_row.project_id}_{index_row.index_id}",
-        )
-
-        query_vector = self._embed_query(index_row, request.query)
-        qdrant = get_qdrant_client()
-        k = request.strategy.k
-        if request.strategy.search_type == "mmr":
+    def _build_vector_retriever(
+        self,
+        *,
+        index_row: Index,
+        k: int,
+        search_type: str,
+        score_threshold: float | None,
+        metadata_filter: dict[str, Any] | None,
+    ) -> BaseRetriever:
+        if metadata_filter:
             raise api_error(
-                501,
-                "provider_unsupported",
-                "mmr search_type is not supported for qdrant retrieval via this API path",
-                {"provider": "qdrant", "search_type": "mmr"},
+                400,
+                "unsupported_strategy_param",
+                "strategy.filter is not supported by rag_lib create_vector_retriever",
+                {"field": "strategy.filter", "strategy": "vector"},
             )
+
+        from rag_lib.retrieval.retrievers import create_vector_retriever
+
+        vector_store = self._load_materialized_vector_store(index_row)
         try:
-            scored = qdrant.query_points(
-                collection_name=collection,
-                query=query_vector,
-                limit=k,
-                with_payload=True,
-            ).points
+            return create_vector_retriever(
+                vector_store=vector_store,
+                top_k=k,
+                search_type=search_type,
+                score_threshold=score_threshold,
+            )
         except Exception as exc:
             raise api_error(
-                424,
-                "qdrant_unavailable",
-                "Qdrant request failed",
-                {"qdrant_url": settings.qdrant_url, "error": str(exc)},
-                hint="Start Qdrant and verify QDRANT_URL is reachable from rag-api.",
+                400,
+                "invalid_vector_strategy",
+                "Failed to initialize vector retriever with provided strategy parameters",
+                {"search_type": search_type, "score_threshold": score_threshold, "error": str(exc)},
             ) from exc
-
-        docs: list[LCDocument] = []
-        for hit in scored:
-            payload = hit.payload or {}
-            metadata = payload.get("metadata", {})
-            metadata["score"] = float(hit.score)
-            metadata["chunk_item_id"] = payload.get("chunk_item_id")
-            metadata["chunk_set_version_id"] = payload.get("chunk_set_version_id")
-            if request.strategy.search_type == "similarity_score_threshold" and request.strategy.score_threshold is not None:
-                if float(hit.score) < float(request.strategy.score_threshold):
-                    continue
-            docs.append(LCDocument(page_content=payload.get("content", ""), metadata=metadata))
-        return docs
-
-    def _run_vector_faiss(
-        self,
-        index_row: Index,
-        query: str,
-        k: int,
-        search_type: str,
-        score_threshold: float | None,
-        metadata_filter: dict[str, Any] | None,
-    ) -> list[LCDocument]:
-        faiss_dir = index_row.config_json.get("faiss_local_dir")
-        if not faiss_dir:
-            raise api_error(500, "missing_faiss_artifact", "FAISS index path is missing from index configuration", {"index_id": index_row.index_id})
-
-        try:
-            from langchain_community.vectorstores import FAISS
-        except Exception:
-            raise api_error(424, "missing_dependency", "FAISS runtime dependencies are not available", {"provider": "faiss"})
-
-        embeddings = self._get_embeddings(index_row)
-        store = FAISS.load_local(faiss_dir, embeddings, allow_dangerous_deserialization=True)
-        return self._invoke_vector_store(
-            store,
-            query=query,
-            k=k,
-            search_type=search_type,
-            score_threshold=score_threshold,
-            metadata_filter=metadata_filter,
-        )
-
-    def _run_vector_chroma(
-        self,
-        index_row: Index,
-        query: str,
-        k: int,
-        search_type: str,
-        score_threshold: float | None,
-        metadata_filter: dict[str, Any] | None,
-    ) -> list[LCDocument]:
-        persist_directory = index_row.config_json.get("chroma_persist_directory")
-        collection_name = index_row.config_json.get("collection_name")
-        if not persist_directory or not collection_name:
-            raise api_error(500, "missing_chroma_artifact", "Chroma index configuration is incomplete", {"index_id": index_row.index_id})
-
-        try:
-            from langchain_chroma import Chroma
-        except Exception:
-            raise api_error(424, "missing_dependency", "Chroma runtime dependency is not available", {"provider": "chroma"})
-
-        embeddings = self._get_embeddings(index_row)
-        store = Chroma(collection_name=collection_name, embedding_function=embeddings, persist_directory=persist_directory)
-        return self._invoke_vector_store(
-            store,
-            query=query,
-            k=k,
-            search_type=search_type,
-            score_threshold=score_threshold,
-            metadata_filter=metadata_filter,
-        )
-
-    def _run_vector_postgres(
-        self,
-        index_row: Index,
-        query: str,
-        k: int,
-        search_type: str,
-        score_threshold: float | None,
-        metadata_filter: dict[str, Any] | None,
-    ) -> list[LCDocument]:
-        collection_name = index_row.config_json.get("collection_name")
-        connection = index_row.config_json.get("connection") or settings.vector_postgres_connection
-        if not collection_name or not connection:
-            raise api_error(500, "missing_pgvector_config", "Postgres vector configuration is incomplete", {"index_id": index_row.index_id})
-
-        try:
-            from langchain_postgres import PGVector
-        except Exception:
-            raise api_error(424, "missing_dependency", "PGVector runtime dependency is not available", {"provider": "postgres"})
-
-        embeddings = self._get_embeddings(index_row)
-        store = PGVector(embeddings=embeddings, collection_name=collection_name, connection=connection, use_jsonb=True)
-        return self._invoke_vector_store(
-            store,
-            query=query,
-            k=k,
-            search_type=search_type,
-            score_threshold=score_threshold,
-            metadata_filter=metadata_filter,
-        )
 
     def _get_embeddings(self, index_row: Index):
         provider = index_row.config_json.get("embedding_provider", "mock")
@@ -343,101 +243,26 @@ class RetrievalService:
 
         return create_embeddings_model(provider=provider, model_name=model_name)
 
-    def _embed_query(self, index_row: Index, query: str) -> list[float]:
-        return self._get_embeddings(index_row).embed_query(query)
-
-    def _invoke_vector_store(
-        self,
-        vector_store: Any,
-        *,
-        query: str,
-        k: int,
-        search_type: str,
-        score_threshold: float | None,
-        metadata_filter: dict[str, Any] | None = None,
-    ) -> list[LCDocument]:
-        search_kwargs: dict[str, Any] = {"k": k}
-        if score_threshold is not None:
-            search_kwargs["score_threshold"] = score_threshold
-        if metadata_filter:
-            search_kwargs["filter"] = metadata_filter
-        retriever = vector_store.as_retriever(
-            search_type=search_type,
-            search_kwargs=search_kwargs,
-        )
-        return list(retriever.invoke(query))
-
     def _load_materialized_vector_store(self, index_row: Index):
-        provider = index_row.provider.lower()
         embeddings = self._get_embeddings(index_row)
-
-        if provider == "faiss":
-            faiss_dir = index_row.config_json.get("faiss_local_dir")
-            if not faiss_dir:
-                raise api_error(
-                    500,
-                    "missing_faiss_artifact",
-                    "FAISS index path is missing from index configuration",
-                    {"index_id": index_row.index_id},
-                )
-            try:
-                from langchain_community.vectorstores import FAISS
-            except Exception:
-                raise api_error(424, "missing_dependency", "FAISS runtime dependencies are not available", {"provider": "faiss"})
-            return FAISS.load_local(faiss_dir, embeddings, allow_dangerous_deserialization=True)
-
-        if provider == "chroma":
-            persist_directory = index_row.config_json.get("chroma_persist_directory")
-            collection_name = index_row.config_json.get("collection_name")
-            if not persist_directory or not collection_name:
-                raise api_error(
-                    500,
-                    "missing_chroma_artifact",
-                    "Chroma index configuration is incomplete",
-                    {"index_id": index_row.index_id},
-                )
-            try:
-                from langchain_chroma import Chroma
-            except Exception:
-                raise api_error(424, "missing_dependency", "Chroma runtime dependency is not available", {"provider": "chroma"})
-            return Chroma(collection_name=collection_name, embedding_function=embeddings, persist_directory=persist_directory)
-
-        if provider == "postgres":
-            collection_name = index_row.config_json.get("collection_name")
-            connection = index_row.config_json.get("connection") or settings.vector_postgres_connection
-            if not collection_name or not connection:
-                raise api_error(
-                    500,
-                    "missing_pgvector_config",
-                    "Postgres vector configuration is incomplete",
-                    {"index_id": index_row.index_id},
-                )
-            try:
-                from langchain_postgres import PGVector
-            except Exception:
-                raise api_error(424, "missing_dependency", "PGVector runtime dependency is not available", {"provider": "postgres"})
-            return PGVector(embeddings=embeddings, collection_name=collection_name, connection=connection, use_jsonb=True)
-
-        raise api_error(501, "provider_unsupported", "Provider is not implemented", {"provider": provider})
+        return create_vector_store_for_retrieval(index_row=index_row, embeddings=embeddings)
 
     def _run_bm25(self, docs: list[LCDocument], query: str, k: int) -> list[LCDocument]:
-        try:
-            from rag_lib.retrieval.retrievers import create_bm25_retriever
+        retriever = self._create_bm25_retriever(docs, top_k=k)
+        return list(retriever.invoke(query))
 
-            retriever = create_bm25_retriever(docs, top_k=k)
-            return list(retriever.invoke(query))
-        except Exception:
-            # Fallback when rank_bm25 is not installed.
-            q_tokens = {t for t in query.lower().split() if t}
-            scored = []
-            for doc in docs:
-                tokens = set(doc.page_content.lower().split())
-                score = len(q_tokens.intersection(tokens))
-                if score > 0:
-                    enriched = LCDocument(page_content=doc.page_content, metadata={**doc.metadata, "score": float(score)})
-                    scored.append((score, enriched))
-            scored.sort(key=lambda x: x[0], reverse=True)
-            return [d for _, d in scored[:k]]
+    def _create_bm25_retriever(self, docs: list[LCDocument], *, top_k: int) -> BaseRetriever:
+        from rag_lib.retrieval.retrievers import create_bm25_retriever
+
+        try:
+            return create_bm25_retriever(docs, top_k=top_k)
+        except Exception as exc:
+            raise api_error(
+                424,
+                "missing_dependency",
+                "BM25 retriever initialization failed",
+                {"retriever": "bm25", "error": str(exc)},
+            ) from exc
 
     def _run_regex(self, docs: list[LCDocument], pattern: str) -> list[LCDocument]:
         from rag_lib.retrieval.retrievers import RegexRetriever
@@ -453,29 +278,20 @@ class RetrievalService:
 
     async def _run_ensemble(self, project_id: str, request: RetrieveRequest, docs: list[LCDocument]):
         from rag_lib.retrieval.composition import create_ensemble_retriever
-        from rag_lib.retrieval.retrievers import FuzzyRetriever, RegexRetriever, create_vector_retriever
+        from rag_lib.retrieval.retrievers import FuzzyRetriever, RegexRetriever
 
-        retrievers = []
+        retrievers: list[BaseRetriever] = []
         sources = request.strategy.sources
         weights = request.strategy.weights
-        if not sources:
-            try:
-                from rag_lib.retrieval.retrievers import create_bm25_retriever
 
-                retrievers.append(create_bm25_retriever(docs, top_k=8))
-            except Exception:
-                pass
+        if not sources:
+            retrievers.append(self._create_bm25_retriever(docs, top_k=8))
             retrievers.extend([RegexRetriever(documents=docs), FuzzyRetriever(documents=docs, threshold=75)])
         else:
             for src in sources:
                 st = src.get("type")
                 if st == "bm25":
-                    try:
-                        from rag_lib.retrieval.retrievers import create_bm25_retriever
-
-                        retrievers.append(create_bm25_retriever(docs, top_k=src.get("k", 8)))
-                    except Exception:
-                        continue
+                    retrievers.append(self._create_bm25_retriever(docs, top_k=int(src.get("k", 8))))
                 elif st == "regex":
                     retrievers.append(RegexRetriever(documents=docs))
                 elif st == "fuzzy":
@@ -487,77 +303,91 @@ class RetrievalService:
                         )
                     )
                 elif st == "vector":
-                    if request.target != "index_build" or not request.target_id:
-                        continue
-                    build = await self.session.get(IndexBuild, request.target_id)
-                    index_row = await self.session.get(Index, build.index_id) if build else None
-                    if not build or not index_row:
-                        continue
-                    if index_row.provider.lower() == "qdrant":
-                        vector_req = request.model_copy(deep=True)
-                        vector_req.strategy = VectorConfig(
+                    _, index_row = await self._resolve_index_build(project_id, request.target, request.target_id)
+                    retrievers.append(
+                        self._build_vector_retriever(
+                            index_row=index_row,
                             k=int(src.get("k", 8)),
-                            search_type=src.get("search_type", "similarity"),
+                            search_type=str(src.get("search_type", "similarity")),
                             score_threshold=src.get("score_threshold"),
-                            filter=src.get("filter"),
+                            metadata_filter=src.get("filter"),
                         )
-                        vector_docs = await self._run_vector(project_id, vector_req)
-                        try:
-                            from rag_lib.retrieval.retrievers import create_bm25_retriever
-
-                            retrievers.append(create_bm25_retriever(vector_docs, top_k=src.get("k", 8)))
-                        except Exception:
-                            continue
-                    else:
-                        vector_store = self._load_materialized_vector_store(index_row)
-                        retrievers.append(
-                            create_vector_retriever(
-                                vector_store=vector_store,
-                                top_k=int(src.get("k", 8)),
-                                search_type=src.get("search_type", "similarity"),
-                                score_threshold=src.get("score_threshold"),
-                            )
-                        )
+                    )
+                else:
+                    raise api_error(
+                        400,
+                        "invalid_ensemble_sources",
+                        "Unsupported ensemble source type",
+                        {"source_type": st, "allowed": ["bm25", "regex", "fuzzy", "vector"]},
+                    )
 
         if not retrievers:
             raise api_error(400, "invalid_ensemble_sources", "No valid ensemble sources")
 
-        ensemble = create_ensemble_retriever(retrievers, weights=weights)
+        try:
+            ensemble = create_ensemble_retriever(retrievers, weights=weights)
+        except Exception as exc:
+            raise api_error(
+                400,
+                "invalid_ensemble_sources",
+                "Failed to build ensemble retriever",
+                {"error": str(exc)},
+            ) from exc
         return list(ensemble.invoke(request.query))
 
     async def _run_rerank(self, project_id: str, request: RetrieveRequest, docs: list[LCDocument]) -> list[LCDocument]:
         base_spec = request.strategy.base or {}
         base_type = base_spec.get("type", "bm25")
-        if base_type == "vector":
-            # Build a synthetic request for vector search.
-            vector_req = request.model_copy(deep=True)
-            vector_req.strategy = VectorConfig(**base_spec)
-            return await self._run_vector(project_id, vector_req)
-
-        if base_type == "regex":
-            base_docs = self._run_regex(docs, base_spec.get("pattern", request.query))
-        elif base_type == "fuzzy":
-            base_docs = self._run_fuzzy(
-                docs,
-                request.query,
-                int(base_spec.get("threshold", 75)),
-                base_spec.get("mode", "partial_ratio"),
-            )
-        else:
-            base_docs = self._run_bm25(docs, request.query, int(base_spec.get("k", 20)))
 
         from rag_lib.retrieval.composition import create_reranking_retriever
-        from rag_lib.retrieval.retrievers import create_bm25_retriever
+        from rag_lib.retrieval.retrievers import FuzzyRetriever, RegexRetriever
 
-        # Wrap base docs into a retriever for reranking.
-        base_retriever = create_bm25_retriever(base_docs, top_k=len(base_docs) or 1)
-        reranked = create_reranking_retriever(
-            base_retriever_or_list=base_retriever,
-            reranker_model=request.strategy.model_name,
-            top_k=request.strategy.top_k,
-            max_score_ratio=request.strategy.max_score_ratio,
-            device=request.strategy.device,
-        )
+        if base_type == "vector":
+            _, index_row = await self._resolve_index_build(project_id, request.target, request.target_id)
+            base_retriever = self._build_vector_retriever(
+                index_row=index_row,
+                k=int(base_spec.get("k", request.strategy.top_k)),
+                search_type=str(base_spec.get("search_type", "similarity")),
+                score_threshold=base_spec.get("score_threshold"),
+                metadata_filter=base_spec.get("filter"),
+            )
+        elif base_type == "regex":
+            pattern = str(base_spec.get("pattern", request.query))
+            if pattern == request.query:
+                base_retriever = RegexRetriever(documents=docs)
+            else:
+                base_retriever = _StaticRetriever(documents=self._run_regex(docs, pattern))
+        elif base_type == "fuzzy":
+            base_retriever = FuzzyRetriever(
+                documents=docs,
+                threshold=int(base_spec.get("threshold", 75)),
+                mode=str(base_spec.get("mode", "partial_ratio")),
+            )
+        elif base_type == "bm25":
+            base_retriever = self._create_bm25_retriever(docs, top_k=int(base_spec.get("k", 20)))
+        else:
+            raise api_error(
+                400,
+                "invalid_rerank_base",
+                "Unsupported rerank base strategy",
+                {"base_type": base_type, "allowed": ["bm25", "regex", "fuzzy", "vector"]},
+            )
+
+        try:
+            reranked = create_reranking_retriever(
+                base_retriever_or_list=base_retriever,
+                reranker_model=request.strategy.model_name,
+                top_k=request.strategy.top_k,
+                max_score_ratio=request.strategy.max_score_ratio,
+                device=request.strategy.device,
+            )
+        except Exception as exc:
+            raise api_error(
+                424,
+                "missing_dependency",
+                "Reranker initialization failed",
+                {"error": str(exc), "model_name": request.strategy.model_name},
+            ) from exc
         return list(reranked.invoke(request.query))
 
     async def _run_dual_storage(self, project_id: str, request: RetrieveRequest, docs: list[LCDocument]) -> list[LCDocument]:
@@ -581,158 +411,30 @@ class RetrievalService:
 
         id_key = request.strategy.id_key
         parent_docs_by_id = self._load_dual_storage_doc_store(build, id_key)
+        from langchain_core.stores import InMemoryStore
+        from rag_lib.retrieval.composition import create_scored_dual_storage_retriever
+        from rag_lib.retrieval.scored_retriever import HydrationMode, SearchType
 
-        provider = index_row.provider.lower()
-        if provider != "qdrant":
-            from langchain_core.stores import InMemoryStore
-            from rag_lib.retrieval.composition import create_scored_dual_storage_retriever
-            from rag_lib.retrieval.scored_retriever import HydrationMode, SearchType
+        search_kwargs = dict(request.strategy.search_kwargs or {})
+        search_kwargs.update(request.strategy.vector_search or {})
+        if "k" not in search_kwargs:
+            search_kwargs["k"] = 10
 
-            search_kwargs = dict(request.strategy.search_kwargs or {})
-            search_kwargs.update(request.strategy.vector_search or {})
-            if "k" not in search_kwargs:
-                search_kwargs["k"] = 10
+        doc_store = InMemoryStore()
+        doc_store.mset([(item_id, parent_doc) for item_id, parent_doc in parent_docs_by_id.items()])
 
-            doc_store = InMemoryStore()
-            doc_store.mset([(item_id, parent_doc) for item_id, parent_doc in parent_docs_by_id.items()])
-
-            vector_store = self._load_materialized_vector_store(index_row)
-            retriever = create_scored_dual_storage_retriever(
-                vector_store=vector_store,
-                doc_store=doc_store,
-                id_key=id_key,
-                search_kwargs=search_kwargs,
-                search_type=SearchType(request.strategy.search_type),
-                score_threshold=request.strategy.score_threshold,
-                hydration_mode=HydrationMode(request.strategy.hydration_mode),
-                enrichment_separator=request.strategy.enrichment_separator,
-            )
-            return list(retriever.invoke(request.query))
-
-        collection = index_row.config_json.get(
-            "collection_name",
-            f"{settings.default_vector_collection_prefix}_{index_row.project_id}_{index_row.index_id}",
+        vector_store = self._load_materialized_vector_store(index_row)
+        retriever = create_scored_dual_storage_retriever(
+            vector_store=vector_store,
+            doc_store=doc_store,
+            id_key=id_key,
+            search_kwargs=search_kwargs,
+            search_type=SearchType(request.strategy.search_type),
+            score_threshold=request.strategy.score_threshold,
+            hydration_mode=HydrationMode(request.strategy.hydration_mode),
+            enrichment_separator=request.strategy.enrichment_separator,
         )
-        query_vector = self._embed_query(index_row, request.query)
-        qdrant = get_qdrant_client()
-        vector_k = int((request.strategy.vector_search or {}).get("k", 10))
-
-        try:
-            hits = qdrant.query_points(
-                collection_name=collection,
-                query=query_vector,
-                limit=vector_k,
-                with_payload=True,
-            ).points
-        except Exception as exc:
-            raise api_error(
-                424,
-                "qdrant_unavailable",
-                "Qdrant request failed",
-                {"qdrant_url": settings.qdrant_url, "error": str(exc)},
-                hint="Start Qdrant and verify QDRANT_URL is reachable from rag-api.",
-            ) from exc
-
-        if request.strategy.search_type == "similarity_score_threshold" and request.strategy.score_threshold is not None:
-            hits = [h for h in hits if float(h.score) >= float(request.strategy.score_threshold)]
-
-        chunk_ids = [str(h.payload.get("chunk_item_id")) for h in hits if h.payload and h.payload.get("chunk_item_id")]
-        if not chunk_ids:
-            return []
-
-        chunk_stmt = select(ChunkItem).where(
-            ChunkItem.chunk_set_version_id == build.chunk_set_version_id,
-            ChunkItem.item_id.in_(chunk_ids),
-        )
-        chunk_res = await self.session.execute(chunk_stmt)
-        chunk_rows = list(chunk_res.scalars().all())
-        chunks_by_id = {row.item_id: row for row in chunk_rows}
-
-        children: list[LCDocument] = []
-        ordered_parent_ids: list[str] = []
-        seen_parent_ids: set[str] = set()
-
-        for hit in hits:
-            payload = hit.payload or {}
-            item_id = str(payload.get("chunk_item_id"))
-            row = chunks_by_id.get(item_id)
-            if not row:
-                continue
-
-            meta = {
-                **(row.metadata_json or {}),
-                "similarity_score": float(hit.score),
-                "score": float(hit.score),
-                "item_id": row.item_id,
-                "chunk_set_version_id": row.chunk_set_version_id,
-            }
-            parent_id = meta.get(id_key)
-            if parent_id is None:
-                raise api_error(
-                    500,
-                    "doc_store_missing_parent_for_hit",
-                    "Retrieved chunk does not contain configured dual storage id_key",
-                    {"chunk_item_id": row.item_id, "id_key": id_key},
-                )
-            parent_id = str(parent_id)
-            meta[id_key] = parent_id
-            if parent_id not in seen_parent_ids:
-                seen_parent_ids.add(parent_id)
-                ordered_parent_ids.append(parent_id)
-            children.append(LCDocument(page_content=row.content, metadata=meta))
-
-        if not children:
-            return []
-
-        mode = request.strategy.hydration_mode
-        if mode == "children_enriched":
-            enriched: list[LCDocument] = []
-            separator = request.strategy.enrichment_separator
-            for child in children:
-                pid = child.metadata.get(id_key)
-                if pid is None:
-                    raise api_error(500, "doc_store_missing_parent_for_hit", "Retrieved chunk has no parent id", {"id_key": id_key})
-                parent_doc = parent_docs_by_id.get(str(pid))
-                if parent_doc is None:
-                    raise api_error(
-                        500,
-                        "doc_store_missing_parent_for_hit",
-                        "doc_store does not contain parent document for retrieved chunk",
-                        {"parent_id": str(pid), "id_key": id_key},
-                    )
-                enriched_content = f"{child.page_content}{separator}{parent_doc.page_content}"
-                enriched.append(LCDocument(page_content=enriched_content, metadata=dict(child.metadata or {})))
-            return enriched
-
-        parent_docs: list[LCDocument] = []
-        parent_max_score: dict[str, float] = {}
-        for child in children:
-            pid = child.metadata.get(id_key)
-            if pid is None:
-                continue
-            pid_str = str(pid)
-            score = float(child.metadata.get("similarity_score", child.metadata.get("score", 0.0)) or 0.0)
-            if pid_str not in parent_max_score or score > parent_max_score[pid_str]:
-                parent_max_score[pid_str] = score
-
-        for pid in ordered_parent_ids:
-            parent_doc = parent_docs_by_id.get(pid)
-            if parent_doc is None:
-                raise api_error(
-                    500,
-                    "doc_store_missing_parent_for_hit",
-                    "doc_store does not contain parent document for retrieved chunk",
-                    {"parent_id": pid, "id_key": id_key},
-                )
-            meta = dict(parent_doc.metadata or {})
-            meta[id_key] = pid
-            meta["similarity_score"] = parent_max_score.get(pid)
-            meta["score"] = parent_max_score.get(pid)
-            parent_docs.append(LCDocument(page_content=parent_doc.page_content, metadata=meta))
-
-        if mode == "children_plus_parents":
-            return children + parent_docs
-        return parent_docs
+        return list(retriever.invoke(request.query))
 
     def _load_index_build_manifest(self, build: IndexBuild) -> dict[str, Any]:
         if not build.artifact_uri:
@@ -864,63 +566,30 @@ class RetrievalService:
 
     async def _run_graph_hybrid(self, project_id: str, request: RetrieveRequest) -> list[LCDocument]:
         graph_docs = await self._run_graph(project_id, request)
-
-        # Reuse vector retrieval path if caller provided an index_build target.
-        vector_docs: list[LCDocument] = []
         vector_spec = request.strategy.vector or {}
-        if request.target == "index_build" and request.target_id:
-            vector_req = request.model_copy(deep=True)
-            vector_req.strategy = VectorConfig(
-                k=int(vector_spec.get("k", 10)),
-                search_type=vector_spec.get("search_type", "similarity"),
-                score_threshold=vector_spec.get("score_threshold"),
-                filter=vector_spec.get("filter"),
-            )
-            vector_docs = await self._run_vector(project_id, vector_req)
 
-        merged = self._merge_scored_lists(
-            vector_docs,
-            graph_docs,
-            request.strategy.weights or [0.7, 0.3],
+        # Keep graph_hybrid vector side optional: if no index_build target is supplied,
+        # return graph results only.
+        if request.target != "index_build" or not request.target_id:
+            return graph_docs
+
+        from rag_lib.retrieval.composition import create_graph_hybrid_retriever
+
+        _, index_row = await self._resolve_index_build(project_id, request.target, request.target_id)
+        vector_retriever = self._build_vector_retriever(
+            index_row=index_row,
+            k=int(vector_spec.get("k", 10)),
+            search_type=str(vector_spec.get("search_type", "similarity")),
+            score_threshold=vector_spec.get("score_threshold"),
+            metadata_filter=vector_spec.get("filter"),
         )
-        return merged
-
-    def _merge_scored_lists(
-        self,
-        vector_docs: list[LCDocument],
-        graph_docs: list[LCDocument],
-        weights: list[float],
-    ) -> list[LCDocument]:
-        vector_weight = weights[0] if len(weights) > 0 else 0.7
-        graph_weight = weights[1] if len(weights) > 1 else 0.3
-
-        scores: dict[str, tuple[LCDocument, float]] = {}
-
-        for rank, doc in enumerate(vector_docs):
-            key = doc.metadata.get("item_id") or doc.metadata.get("chunk_item_id") or doc.page_content
-            score = vector_weight * (1.0 / (rank + 1))
-            existing = scores.get(key)
-            if existing:
-                scores[key] = (existing[0], existing[1] + score)
-            else:
-                scores[key] = (doc, score)
-
-        for rank, doc in enumerate(graph_docs):
-            key = doc.metadata.get("node_id") or doc.page_content
-            score = graph_weight * (1.0 / (rank + 1))
-            existing = scores.get(key)
-            if existing:
-                scores[key] = (existing[0], existing[1] + score)
-            else:
-                scores[key] = (doc, score)
-
-        ranked = sorted(scores.values(), key=lambda item: item[1], reverse=True)
-        out: list[LCDocument] = []
-        for doc, score in ranked:
-            meta = dict(doc.metadata or {})
-            meta["score"] = float(score)
-            out.append(LCDocument(page_content=doc.page_content, metadata=meta))
-        return out
+        graph_retriever = _StaticRetriever(documents=graph_docs)
+        hybrid = create_graph_hybrid_retriever(
+            vector_retriever=vector_retriever,
+            graph_retriever=graph_retriever,
+            weights=request.strategy.weights or [0.7, 0.3],
+        )
+        return list(hybrid.invoke(request.query))
 
     async def _latest_active_chunk_set(self, project_id: str) -> str:
         stmt = (

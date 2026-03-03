@@ -1,44 +1,9 @@
 import io
-from dataclasses import dataclass
 
 import pytest
 
 from app.storage.keys import uri_to_key
 from app.storage.object_store import object_store
-
-
-@dataclass
-class _Hit:
-    payload: dict
-    score: float
-
-
-class _DummyQdrantClient:
-    class _QueryResult:
-        def __init__(self, points):
-            self.points = points
-
-    class _Collections:
-        def __init__(self):
-            self.collections = []
-
-    def __init__(self, hits):
-        self._hits = hits
-
-    def get_collections(self):
-        return self._Collections()
-
-    def create_collection(self, *args, **kwargs):
-        return None
-
-    def upsert(self, *args, **kwargs):
-        return None
-
-    def search(self, *args, **kwargs):
-        return self._hits
-
-    def query_points(self, *args, **kwargs):
-        return self._QueryResult(self._hits)
 
 
 def _create_project_and_artifacts(client, text: str = "alpha beta gamma. delta epsilon."):
@@ -140,6 +105,45 @@ def test_retrieval_ensemble_with_default_sources(client):
     assert ret.json()["total"] >= 0
 
 
+def test_retrieval_bm25_missing_dependency_returns_explicit_error(client, monkeypatch):
+    ids = _create_project_and_artifacts(client)
+
+    def _raise_missing(*args, **kwargs):
+        raise ImportError("rank_bm25 missing")
+
+    monkeypatch.setattr("rag_lib.retrieval.retrievers.create_bm25_retriever", _raise_missing)
+
+    ret = client.post(
+        f"/api/v1/projects/{ids['project_id']}/retrieve",
+        json={
+            "query": "alpha",
+            "target": "chunk_set",
+            "target_id": ids["chunk_set_id"],
+            "persist": False,
+            "strategy": {"type": "bm25", "k": 3},
+        },
+    )
+    assert ret.status_code == 424, ret.text
+    assert ret.json()["detail"]["code"] == "missing_dependency"
+
+
+def test_retrieval_ensemble_invalid_source_is_rejected(client):
+    ids = _create_project_and_artifacts(client)
+
+    ret = client.post(
+        f"/api/v1/projects/{ids['project_id']}/retrieve",
+        json={
+            "query": "alpha",
+            "target": "chunk_set",
+            "target_id": ids["chunk_set_id"],
+            "persist": False,
+            "strategy": {"type": "ensemble", "sources": [{"type": "unknown_source"}]},
+        },
+    )
+    assert ret.status_code == 400, ret.text
+    assert ret.json()["detail"]["code"] == "invalid_ensemble_sources"
+
+
 def test_retrieval_vector_strategy_targets_faiss_build(client):
     ids = _create_project_and_artifacts(client)
     build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])["build_id"]
@@ -202,36 +206,14 @@ def test_retrieval_rerank_strategy_with_monkeypatched_dependencies(client, monke
     assert ret.json()["total"] >= 1
 
 
-def test_retrieval_dual_storage_strategy_with_mocked_qdrant(client, monkeypatch):
+def test_retrieval_dual_storage_strategy_happy_path(client):
     ids = _create_project_and_artifacts(client)
-
-    idx = client.post(
-        f"/api/v1/projects/{ids['project_id']}/indexes",
-        json={"name": "qdrant-idx", "provider": "qdrant", "index_type": "chunk_vectors", "config": {}, "params": {}},
-    )
-    assert idx.status_code == 200, idx.text
-    index_id = idx.json()["index_id"]
-
-    monkeypatch.setattr("app.services.index_service.get_qdrant_client", lambda: _DummyQdrantClient([]))
-
-    build = client.post(
-        f"/api/v1/indexes/{index_id}/builds",
-        json={
-            "chunk_set_version_id": ids["chunk_set_id"],
-            "params": {},
-            "execution_mode": "sync",
-            "doc_store": {"source": "auto", "id_key": "parent_id"},
-        },
-    )
-    assert build.status_code == 200, build.text
-    build_id = build.json()["build"]["build_id"]
-
-    chunk_set = client.get(f"/api/v1/chunk_sets/{ids['chunk_set_id']}")
-    assert chunk_set.status_code == 200, chunk_set.text
-    first_chunk = chunk_set.json()["items"][0]
-
-    hits = [_Hit(payload={"chunk_item_id": first_chunk["item_id"]}, score=0.91)]
-    monkeypatch.setattr("app.services.retrieval_service.get_qdrant_client", lambda: _DummyQdrantClient(hits))
+    build_id = _create_faiss_build(
+        client,
+        ids["project_id"],
+        ids["chunk_set_id"],
+        doc_store={"source": "auto", "id_key": "parent_id"},
+    )["build_id"]
 
     ret = client.post(
         f"/api/v1/projects/{ids['project_id']}/retrieve",
@@ -247,37 +229,27 @@ def test_retrieval_dual_storage_strategy_with_mocked_qdrant(client, monkeypatch)
     assert ret.json()["total"] >= 1
 
 
-def test_retrieval_qdrant_vector_strategy_with_mocked_qdrant(client, monkeypatch):
+def test_retrieval_vector_requires_succeeded_build(client, monkeypatch):
     ids = _create_project_and_artifacts(client)
 
     idx = client.post(
         f"/api/v1/projects/{ids['project_id']}/indexes",
-        json={"name": "qdrant-idx2", "provider": "qdrant", "index_type": "chunk_vectors", "config": {}, "params": {}},
+        json={"name": "faiss-idx-async", "provider": "faiss", "index_type": "chunk_vectors", "config": {}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
 
-    class _NoopTask:
-        def delay(self, *args, **kwargs):
-            return None
+    async def _leave_queued(self, build_id: str):
+        return await self.get_build(build_id)
 
-    monkeypatch.setattr("app.api.api_v1.endpoints.indexes.run_index_build", _NoopTask())
+    monkeypatch.setattr("app.services.index_service.IndexService.run_build", _leave_queued)
 
     build = client.post(
         f"/api/v1/indexes/{index_id}/builds",
-        json={"chunk_set_version_id": ids["chunk_set_id"], "params": {}, "execution_mode": "async"},
+        json={"chunk_set_version_id": ids["chunk_set_id"], "params": {}, "execution_mode": "sync"},
     )
     assert build.status_code == 200, build.text
     build_id = build.json()["build"]["build_id"]
-
-    mocked_payload = {
-        "content": "alpha payload",
-        "metadata": {"source": "mock"},
-        "chunk_item_id": "cid",
-        "chunk_set_version_id": ids["chunk_set_id"],
-    }
-    hits = [_Hit(payload=mocked_payload, score=0.77)]
-    monkeypatch.setattr("app.services.retrieval_service.get_qdrant_client", lambda: _DummyQdrantClient(hits))
 
     ret = client.post(
         f"/api/v1/projects/{ids['project_id']}/retrieve",
@@ -289,10 +261,8 @@ def test_retrieval_qdrant_vector_strategy_with_mocked_qdrant(client, monkeypatch
             "strategy": {"type": "vector", "k": 3},
         },
     )
-    assert ret.status_code == 200, ret.text
-    data = ret.json()
-    assert data["total"] == 1
-    assert data["items"][0]["page_content"] == "alpha payload"
+    assert ret.status_code == 409, ret.text
+    assert ret.json()["detail"]["code"] == "index_build_not_ready"
 
 
 def test_retrieval_target_segment_set_and_run_lifecycle(client):
@@ -432,9 +402,23 @@ def test_retrieval_vector_accepts_optional_fields_and_paginates(client):
     assert len(page2.json()["items"]) >= 1
 
 
-def test_retrieval_rerank_with_vector_base_uses_index_build(client):
+def test_retrieval_rerank_with_vector_base_uses_index_build(client, monkeypatch):
     ids = _create_project_and_artifacts(client, text="alpha one. alpha two. alpha three.")
     build_id = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])["build_id"]
+
+    called = {"rerank": False}
+
+    def _mock_create_reranking_retriever(base_retriever_or_list, reranker_model="x", top_k=5, max_score_ratio=0.0, device="cpu"):
+        called["rerank"] = True
+
+        class _RerankRetriever:
+            def invoke(self, query: str):
+                docs = list(base_retriever_or_list.invoke(query))
+                return docs[:top_k]
+
+        return _RerankRetriever()
+
+    monkeypatch.setattr("rag_lib.retrieval.composition.create_reranking_retriever", _mock_create_reranking_retriever)
 
     ret = client.post(
         f"/api/v1/projects/{ids['project_id']}/retrieve",
@@ -453,6 +437,7 @@ def test_retrieval_rerank_with_vector_base_uses_index_build(client):
         },
     )
     assert ret.status_code == 200, ret.text
+    assert called["rerank"] is True
     assert ret.json()["total"] >= 1
 
 
@@ -559,3 +544,64 @@ def test_retrieval_unknown_strategy_type_rejected(client):
         },
     )
     assert ret.status_code == 422
+
+
+def test_retrieval_vector_uses_rag_lib_factory(client, monkeypatch):
+    ids = _create_project_and_artifacts(client)
+    build = _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])
+
+    import rag_lib.vectors.factory as vectors_factory
+
+    original_create = vectors_factory.create_vector_store
+    called: dict = {}
+
+    def _wrapped_create_vector_store(*args, **kwargs):
+        called.update(kwargs)
+        return original_create(*args, **kwargs)
+
+    monkeypatch.setattr(vectors_factory, "create_vector_store", _wrapped_create_vector_store)
+
+    ret = client.post(
+        f"/api/v1/projects/{ids['project_id']}/retrieve",
+        json={
+            "query": "alpha",
+            "target": "index_build",
+            "target_id": build["build_id"],
+            "persist": False,
+            "strategy": {"type": "vector", "k": 4},
+        },
+    )
+    assert ret.status_code == 200, ret.text
+    assert called.get("provider") == "faiss"
+    assert called.get("cleanup") is False
+
+
+def test_index_build_uses_indexer_and_factory(client, monkeypatch):
+    ids = _create_project_and_artifacts(client)
+
+    import rag_lib.vectors.factory as vectors_factory
+    from rag_lib.core.indexer import Indexer
+
+    original_create = vectors_factory.create_vector_store
+    original_index = Indexer.index
+    calls: dict[str, int | str] = {"factory": 0, "index": 0}
+
+    def _wrapped_create_vector_store(*args, **kwargs):
+        calls["factory"] += 1
+        calls["provider"] = kwargs.get("provider", "")
+        return original_create(*args, **kwargs)
+
+    def _wrapped_index(self, segments, parent_segments=None, batch_size: int = 100):
+        calls["index"] += 1
+        calls["segments"] = len(segments)
+        return original_index(self, segments, parent_segments=parent_segments, batch_size=batch_size)
+
+    monkeypatch.setattr(vectors_factory, "create_vector_store", _wrapped_create_vector_store)
+    monkeypatch.setattr(Indexer, "index", _wrapped_index)
+
+    _create_faiss_build(client, ids["project_id"], ids["chunk_set_id"])
+
+    assert calls["factory"] >= 1
+    assert calls["index"] == 1
+    assert calls["provider"] == "faiss"
+    assert calls["segments"] >= 1

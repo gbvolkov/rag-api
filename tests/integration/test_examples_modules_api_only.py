@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import runpy
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -152,37 +151,6 @@ class _LocalApiClient:
         return self._request("GET", f"/projects/{project_id}/retrieval_runs")
 
 
-@dataclass
-class _Hit:
-    payload: dict
-    score: float
-
-
-class _DummyQdrantClient:
-    class _QueryResult:
-        def __init__(self, points):
-            self.points = points
-
-    class _Collections:
-        def __init__(self):
-            self.collections = []
-
-    def get_collections(self):
-        return self._Collections()
-
-    def create_collection(self, *args, **kwargs):
-        return None
-
-    def upsert(self, *args, **kwargs):
-        return None
-
-    def search(self, *args, **kwargs):
-        return [_Hit(payload={"chunk_item_id": "missing"}, score=0.9)]
-
-    def query_points(self, *args, **kwargs):
-        return self._QueryResult([_Hit(payload={"chunk_item_id": "missing"}, score=0.9)])
-
-
 def _setup_feature_mocks(monkeypatch):
     from app.core.config import settings
     from app.services import segment_transform_service as sts
@@ -194,6 +162,7 @@ def _setup_feature_mocks(monkeypatch):
     monkeypatch.setattr(settings, "feature_enable_miner_u", True)
 
     monkeypatch.setattr(sts, "require_module", lambda *args, **kwargs: None)
+    monkeypatch.setattr("app.services.segment_service.require_module", lambda *args, **kwargs: None)
     monkeypatch.setattr(sts.SegmentTransformService, "_get_llm", lambda self, provider, model, temperature: object())
     monkeypatch.setattr("rag_lib.llm.factory.create_llm", lambda **kwargs: object())
     monkeypatch.setattr("rag_lib.processors.enricher.SegmentEnricher.enrich", lambda self, segments: segments)
@@ -207,6 +176,14 @@ def _setup_feature_mocks(monkeypatch):
         return [LCDocument(page_content=f"graph:{query}", metadata={"retrieval_kind": "chunk", "score": 1.0})]
 
     monkeypatch.setattr("app.services.graph_service.GraphService.query_graph", _query_graph)
+    async def _run_vector(_self, project_id: str, request):
+        return [LCDocument(page_content=f"vector:{request.query}", metadata={"score": 1.0, "item_id": "v1"})]
+
+    async def _run_dual_storage(_self, project_id: str, request, docs):
+        return [LCDocument(page_content=f"dual:{request.query}", metadata={"score": 1.0, "parent_id": "p1"})]
+
+    monkeypatch.setattr("app.services.retrieval_service.RetrievalService._run_vector", _run_vector)
+    monkeypatch.setattr("app.services.retrieval_service.RetrievalService._run_dual_storage", _run_dual_storage)
 
     class _DummyRaptorProcessor:
         def __init__(self, llm, embeddings, max_levels):
@@ -236,8 +213,14 @@ def _setup_feature_mocks(monkeypatch):
         return [LCDocument(page_content="web-async", metadata={"source": "https://example.com"})]
 
     monkeypatch.setattr("rag_lib.loaders.web_async.AsyncWebLoader.load", _aload)
-    monkeypatch.setattr("app.services.retrieval_service.get_qdrant_client", lambda: _DummyQdrantClient())
-    monkeypatch.setattr("app.services.index_service.get_qdrant_client", lambda: _DummyQdrantClient())
+    class _DummyMinerULoader:
+        def __init__(self, file_path: str, **kwargs):
+            self.file_path = file_path
+
+        def load(self):
+            return [LCDocument(page_content="mineru content", metadata={"source": self.file_path, "parser": "MinerU"})]
+
+    monkeypatch.setattr("rag_lib.loaders.miner_u.MinerULoader", _DummyMinerULoader)
 
     from app.services import chunk_service as chunk_service_module
 

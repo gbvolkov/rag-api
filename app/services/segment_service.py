@@ -1,7 +1,7 @@
 import os
 import tempfile
 import uuid
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -277,41 +277,32 @@ class SegmentService:
                     "miner_u",
                     hint="Set FEATURE_ENABLE_MINER_U=true to enable MinerU loader.",
                 )
-                fallback = bool(loader_params.get("fallback_to_pdf_loader", True))
-                try:
-                    require_module("magic_pdf", "miner_u", install_hint="Install optional dependency 'magic-pdf'.")
-                    from rag_lib.loaders.miner_u import MinerULoader
-
-                    loader = MinerULoader(
-                        file_path=path,
-                        parse_mode=loader_params.get("parse_mode", "auto"),
-                        backend=loader_params.get("backend"),
-                        lang=loader_params.get("lang"),
-                        server_url=loader_params.get("server_url"),
-                        start_page=loader_params.get("start_page"),
-                        end_page=loader_params.get("end_page"),
-                        parse_formula=loader_params.get("parse_formula"),
-                        parse_table=loader_params.get("parse_table"),
-                        device=loader_params.get("device"),
-                        vram=loader_params.get("vram"),
-                        source=loader_params.get("source"),
-                        timeout_seconds=int(loader_params.get("timeout_seconds", 600)),
-                        keep_temp_artifacts=bool(loader_params.get("keep_temp_artifacts", False)),
+                if "fallback_to_pdf_loader" in loader_params or "fallback_parse_mode" in loader_params:
+                    raise api_error(
+                        400,
+                        "invalid_loader_params",
+                        "miner_u loader does not support fallback_to_pdf_loader/fallback_parse_mode in strict mode",
+                        {"loader_type": "miner_u"},
                     )
-                except Exception:
-                    if not fallback:
-                        raise
-                    from rag_lib.loaders.pdf import PDFLoader
+                require_module("magic_pdf", "miner_u", install_hint="Install optional dependency 'magic-pdf'.")
+                from rag_lib.loaders.miner_u import MinerULoader
 
-                    fallback_parse_mode = loader_params.get("fallback_parse_mode")
-                    if not fallback_parse_mode:
-                        candidate = loader_params.get("parse_mode", "text")
-                        fallback_parse_mode = "text" if candidate in {"txt", "auto"} else candidate
-                    loader = PDFLoader(
-                        file_path=path,
-                        parse_mode=fallback_parse_mode,
-                        backend=loader_params.get("backend"),
-                    )
+                loader = MinerULoader(
+                    file_path=path,
+                    parse_mode=loader_params.get("parse_mode", "auto"),
+                    backend=loader_params.get("backend"),
+                    lang=loader_params.get("lang"),
+                    server_url=loader_params.get("server_url"),
+                    start_page=loader_params.get("start_page"),
+                    end_page=loader_params.get("end_page"),
+                    parse_formula=loader_params.get("parse_formula"),
+                    parse_table=loader_params.get("parse_table"),
+                    device=loader_params.get("device"),
+                    vram=loader_params.get("vram"),
+                    source=loader_params.get("source"),
+                    timeout_seconds=int(loader_params.get("timeout_seconds", 600)),
+                    keep_temp_artifacts=bool(loader_params.get("keep_temp_artifacts", False)),
+                )
             elif loader_type == "docx":
                 from rag_lib.loaders.docx import DocXLoader
 
@@ -351,7 +342,10 @@ class SegmentService:
                     file_path=path,
                     output_format=loader_params.get("output_format", "json"),
                     schema=loader_params.get("schema", "."),
-                    schema_dialect=loader_params.get("schema_dialect", "dot_path"),
+                    schema_dialect=self._resolve_schema_dialect(
+                        loader_params.get("schema_dialect", "dot_path"),
+                        error_code="invalid_loader_params",
+                    ),
                     ensure_ascii=bool(loader_params.get("ensure_ascii", False)),
                 )
             elif loader_type == "text":
@@ -506,12 +500,15 @@ class SegmentService:
         return out
 
     def _build_splitter(self, strategy: str, params: dict):
+        length_function = self._resolve_length_function(params, error_code="invalid_splitter_params")
+
         if strategy == "recursive":
             from rag_lib.chunkers.recursive import RecursiveCharacterTextSplitter
 
             return RecursiveCharacterTextSplitter(
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
                 separators=params.get("separators"),
                 keep_separator=bool(params.get("keep_separator", False)),
                 is_separator_regex=bool(params.get("is_separator_regex", False)),
@@ -522,6 +519,7 @@ class SegmentService:
             return TokenTextSplitter(
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
                 model_name=params.get("model_name", "cl100k_base"),
                 encoding_name=params.get("encoding_name"),
             )
@@ -531,6 +529,7 @@ class SegmentService:
             return SentenceSplitter(
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
                 language=params.get("language", "auto"),
             )
         if strategy == "regex":
@@ -543,6 +542,7 @@ class SegmentService:
                 pattern=pattern,
                 chunk_size=params.get("chunk_size", 4000),
                 chunk_overlap=params.get("chunk_overlap", 200),
+                length_function=length_function,
             )
         if strategy == "markdown_table":
             from rag_lib.chunkers.markdown_table import MarkdownTableSplitter
@@ -580,8 +580,12 @@ class SegmentService:
             from rag_lib.chunkers.json import JsonSplitter
 
             return JsonSplitter(
+                min_chunk_size=int(params.get("min_chunk_size", 0)),
                 schema=params.get("schema", "."),
-                schema_dialect=params.get("schema_dialect", "dot_path"),
+                schema_dialect=self._resolve_schema_dialect(
+                    params.get("schema_dialect", "dot_path"),
+                    error_code="invalid_splitter_params",
+                ),
                 ensure_ascii=bool(params.get("ensure_ascii", False)),
                 metadata_value_max_len=params.get("metadata_value_max_len", 256),
             )
@@ -602,6 +606,7 @@ class SegmentService:
                 summarize_table=params.get("summarize_table", True),
                 summarize_chunks=params.get("summarize_chunks", False),
                 inject_summaries_into_content=params.get("inject_summaries_into_content", False),
+                length_function=length_function,
             )
         if strategy == "html":
             from rag_lib.chunkers.html import HTMLSplitter
@@ -649,6 +654,71 @@ class SegmentService:
 
         raise api_error(400, "unsupported_split_strategy", "Unsupported segment split strategy", {"strategy": strategy})
 
+    def _resolve_length_function(self, params: dict[str, Any], *, error_code: str) -> Callable[[str], int]:
+        mode = str(params.get("length_mode", "string_len")).strip().lower()
+        if mode == "string_len":
+            return len
+        if mode != "token_len":
+            raise api_error(
+                400,
+                error_code,
+                "length_mode must be string_len or token_len",
+                {"length_mode": mode, "allowed": ["string_len", "token_len"]},
+            )
+
+        cfg = params.get("length_mode_config")
+        if cfg is not None and not isinstance(cfg, dict):
+            raise api_error(400, error_code, "length_mode_config must be an object", {"length_mode_config": cfg})
+        cfg = cfg or {}
+
+        encoding_name = cfg.get("encoding_name") or params.get("encoding_name")
+        model_name = cfg.get("model_name") or params.get("model_name")
+        default_encoding = "cl100k_base"
+
+        try:
+            import tiktoken
+        except Exception as exc:
+            raise api_error(
+                424,
+                "missing_dependency",
+                "token_len length_mode requires tiktoken dependency",
+                {"dependency": "tiktoken"},
+            ) from exc
+
+        try:
+            if encoding_name:
+                encoding = tiktoken.get_encoding(str(encoding_name))
+            elif model_name:
+                encoding = tiktoken.encoding_for_model(str(model_name))
+            else:
+                encoding = tiktoken.get_encoding(default_encoding)
+        except Exception as exc:
+            raise api_error(
+                400,
+                error_code,
+                "Invalid token_len configuration for length_mode",
+                {"encoding_name": encoding_name, "model_name": model_name, "default_encoding": default_encoding, "error": str(exc)},
+            ) from exc
+
+        def _token_len(value: str) -> int:
+            return len(encoding.encode(value or ""))
+
+        return _token_len
+
+    def _resolve_schema_dialect(self, raw_value: Any, *, error_code: str):
+        from rag_lib.loaders.data_loaders import SchemaDialect
+
+        candidate = SchemaDialect.DOT_PATH.value if raw_value in {None, ""} else str(raw_value)
+        try:
+            return SchemaDialect(candidate)
+        except Exception as exc:
+            raise api_error(
+                400,
+                error_code,
+                "schema_dialect must be a supported SchemaDialect value",
+                {"schema_dialect": raw_value, "allowed": [SchemaDialect.DOT_PATH.value]},
+            ) from exc
+
     def _build_table_summarizer(self, cfg: dict | None):
         if not cfg:
             return None
@@ -679,7 +749,11 @@ class SegmentService:
             )
         except Exception as exc:
             raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
-        return LLMTableSummarizer(llm=llm)
+        return LLMTableSummarizer(
+            llm=llm,
+            prompt_template=cfg.get("prompt_template"),
+            soft_max_chars=cfg.get("soft_max_chars"),
+        )
 
     def _build_pdf_summarizer(self, cfg: dict[str, Any]):
         kind = str((cfg or {}).get("type", "mock")).lower()
@@ -708,7 +782,11 @@ class SegmentService:
             )
         except Exception as exc:
             raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
-        return LLMTableSummarizer(llm=llm)
+        return LLMTableSummarizer(
+            llm=llm,
+            prompt_template=cfg.get("prompt_template"),
+            soft_max_chars=cfg.get("soft_max_chars"),
+        )
 
     def _build_web_cleanup_config(self, cfg: Any):
         if cfg is None:

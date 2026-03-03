@@ -2,26 +2,10 @@ from app.core.config import settings
 
 try:
     from celery import Celery
-except Exception:  # pragma: no cover - fallback for constrained environments
-    class _TaskWrapper:
-        def __init__(self, fn):
-            self._fn = fn
-
-        def __call__(self, *args, **kwargs):
-            return self._fn(*args, **kwargs)
-
-        def delay(self, *args, **kwargs):
-            return self._fn(*args, **kwargs)
-
-    class Celery:  # type: ignore[override]
-        def __init__(self, *args, **kwargs):
-            self.conf = {}
-
-        def task(self, name: str | None = None):
-            def _decorator(fn):
-                return _TaskWrapper(fn)
-
-            return _decorator
+except Exception as exc:  # pragma: no cover
+    raise RuntimeError(
+        "Celery dependency is required for rag-api worker module. Install celery or disable async worker endpoints."
+    ) from exc
 
 
 celery_app = Celery("rag_api", broker=settings.redis_url, backend=settings.redis_url)

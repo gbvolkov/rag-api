@@ -6,7 +6,6 @@ from app.db.session import get_session
 from app.schemas.indexing import CreateIndexBuildRequest, CreateIndexRequest, IndexBuildOut, IndexOut
 from app.services.index_service import IndexService
 from app.services.serializers import index_build_out, index_out
-from app.workers.tasks import run_index_build
 
 router = APIRouter()
 
@@ -60,6 +59,8 @@ async def create_index_build(index_id: str, request: CreateIndexBuildRequest, se
     )
 
     if request.execution_mode == "async":
+        from app.workers.tasks import run_index_build
+
         job = await svc.create_job(build.project_id, "index_build", {"build_id": build.build_id, "index_id": build.index_id})
         run_index_build.delay(job.job_id, build.build_id)
         return {"mode": "async", "job_id": job.job_id, "build": index_build_out(build).model_dump()}

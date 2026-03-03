@@ -12,6 +12,7 @@ from app.models import (
     SegmentItem,
     SegmentSetVersion,
 )
+from app.core.errors import api_error
 from app.schemas.chunk import ChunkItemOut, ChunkSetOut
 from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.schemas.graph import GraphBuildOut
@@ -84,7 +85,15 @@ def segment_set_out(m: SegmentSetVersion, total_items: int = 0) -> SegmentSetOut
 
 
 def segment_item_out(m: SegmentItem) -> SegmentItemOut:
-    seg_type = m.type if m.type in {e.value for e in SegmentType} else SegmentType.other.value
+    try:
+        seg_type = SegmentType(m.type)
+    except Exception as exc:
+        raise api_error(
+            500,
+            "invalid_segment_type",
+            "Persisted segment item type is invalid",
+            {"item_id": m.item_id, "type": m.type, "allowed": [e.value for e in SegmentType]},
+        ) from exc
     return SegmentItemOut(
         item_id=m.item_id,
         position=m.position,
@@ -93,7 +102,7 @@ def segment_item_out(m: SegmentItem) -> SegmentItemOut:
         parent_id=m.parent_id,
         level=m.level,
         path=m.path_json or [],
-        type=SegmentType(seg_type),
+        type=seg_type,
         original_format=m.original_format,
     )
 

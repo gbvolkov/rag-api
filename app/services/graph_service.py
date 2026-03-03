@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.capabilities import require_feature
 from app.core.config import settings
 from app.core.errors import api_error
-from app.models import ChunkItem, ChunkSetVersion, GraphBuild, GraphQueryRun, SegmentItem, SegmentSetVersion
-from app.services.graph_store_factory import create_graph_store
+from app.models import ChunkItem, ChunkSetVersion, GraphBuild, GraphQueryRun, Index, IndexBuild, SegmentItem, SegmentSetVersion
+from app.services.vector_store_adapter import create_vector_store_for_retrieval
 from app.storage.keys import uri_to_key
 from app.storage.object_store import object_store
 
@@ -38,7 +38,10 @@ class GraphService:
             hint="Set FEATURE_ENABLE_GRAPH=true to enable graph capabilities.",
         )
         await self._validate_source(project_id, source_type, source_id)
-        _, resolved_backend = create_graph_store(backend)
+        probe_store, resolved_backend = self._create_graph_store(backend)
+        close = getattr(probe_store, "close", None)
+        if callable(close):
+            close()
 
         row = GraphBuild(
             project_id=project_id,
@@ -82,7 +85,7 @@ class GraphService:
             await self.session.commit()
             raise api_error(400, "empty_source", "Graph source has no items", {"source_type": row.source_type, "source_id": row.source_id})
 
-        store, backend = create_graph_store(row.backend)
+        store, backend = self._create_graph_store(row.backend)
         params = row.params_json or {}
         communities: dict[int, list[str]] = {}
         summary_segments: list[dict[str, Any]] = []
@@ -197,10 +200,24 @@ class GraphService:
         if row.status != "succeeded":
             raise api_error(409, "graph_build_not_ready", "Graph build is not ready", {"graph_build_id": row.graph_build_id})
 
+        params = row.params_json or {}
+        configured_index_build_id = params.get("index_build_id")
+        if not configured_index_build_id:
+            raise api_error(
+                400,
+                "graph_index_build_required",
+                "Graph retrieval requires graph build params.index_build_id",
+                {"graph_build_id": row.graph_build_id},
+            )
+
         store = self._load_store_for_build(row)
-        vector_store = await self._build_ephemeral_vector_store(row)
         try:
-            from rag_lib.retrieval.graph_retriever import GraphQueryConfig, GraphRetriever
+            vector_store = await self._load_vector_store_from_index_build(
+                project_id=row.project_id,
+                index_build_id=str(configured_index_build_id),
+            )
+            from rag_lib.retrieval.graph_retriever import GraphQueryConfig
+            from rag_lib.retrieval.retrievers import create_graph_retriever
 
             cfg = GraphQueryConfig(
                 mode=mode,
@@ -209,9 +226,10 @@ class GraphService:
             llm = None
             if cfg.enable_keyword_extraction:
                 llm = self._get_llm(provider=None, model=None, temperature=None)
-            retriever = GraphRetriever(
-                graph_store=store,
+
+            retriever = create_graph_retriever(
                 vector_store=vector_store,
+                graph_store=store,
                 config=cfg,
                 llm=llm,
             )
@@ -237,22 +255,112 @@ class GraphService:
             await self.session.commit()
             return list(docs or [])
         except Exception as exc:
+            from rag_lib.retrieval.graph_retriever import (
+                GraphCapabilityError,
+                GraphConfigurationError,
+                GraphDataError,
+            )
+
+            if isinstance(exc, GraphConfigurationError):
+                raise api_error(400, "graph_configuration_error", "Graph query configuration is invalid", {"error": str(exc)}) from exc
+            if isinstance(exc, GraphCapabilityError):
+                raise api_error(424, "graph_capability_error", "Graph backend capability is unavailable", {"error": str(exc)}) from exc
+            if isinstance(exc, GraphDataError):
+                raise api_error(400, "graph_data_error", "Graph query input/output data is invalid", {"error": str(exc)}) from exc
             raise api_error(400, "graph_query_failed", "Graph query failed", {"error": str(exc)}) from exc
         finally:
             close = getattr(store, "close", None)
             if callable(close):
                 close()
 
-    async def _build_ephemeral_vector_store(self, row: GraphBuild):
-        from langchain_community.vectorstores import FAISS
-        from rag_lib.embeddings.mock import MockEmbeddings
+    async def _load_vector_store_from_index_build(self, project_id: str, index_build_id: str):
+        build = await self.session.get(IndexBuild, index_build_id)
+        if not build or build.project_id != project_id or build.is_deleted:
+            raise api_error(
+                404,
+                "index_build_not_found",
+                "Index build not found",
+                {"index_build_id": index_build_id, "project_id": project_id},
+            )
+        if build.status != "succeeded":
+            raise api_error(
+                409,
+                "index_build_not_ready",
+                "Index build is not ready for graph retrieval",
+                {"index_build_id": index_build_id, "status": build.status},
+            )
 
-        segments = await self._load_source_segments(row.project_id, row.source_type, row.source_id)
-        docs = [seg.to_langchain() for seg in segments]
-        return FAISS.from_documents(docs, MockEmbeddings())
+        index_row = await self.session.get(Index, build.index_id)
+        if not index_row or index_row.is_deleted:
+            raise api_error(404, "index_not_found", "Index not found", {"index_id": build.index_id})
+
+        embeddings = self._get_embeddings(
+            provider=index_row.config_json.get("embedding_provider", "mock"),
+            model_name=index_row.config_json.get("embedding_model_name"),
+        )
+        return create_vector_store_for_retrieval(index_row=index_row, embeddings=embeddings)
+
+    def _get_embeddings(self, provider: str, model_name: str | None):
+        if provider == "mock":
+            from rag_lib.embeddings.mock import MockEmbeddings
+
+            return MockEmbeddings()
+
+        from rag_lib.embeddings.factory import create_embeddings_model
+
+        try:
+            return create_embeddings_model(provider=provider, model_name=model_name)
+        except Exception as exc:
+            raise api_error(
+                424,
+                "missing_dependency",
+                "Embedding provider initialization failed",
+                {"provider": provider, "model_name": model_name, "error": str(exc)},
+            ) from exc
+
+    def _create_graph_store(self, backend: str | None):
+        resolved_backend = (backend or settings.graph_backend_default).strip().lower()
+        if resolved_backend not in {"neo4j", "networkx"}:
+            raise api_error(
+                400,
+                "invalid_graph_backend",
+                "Unsupported graph backend",
+                {"backend": resolved_backend, "allowed": ["neo4j", "networkx"]},
+            )
+
+        from rag_lib.graph.store import create_graph_store
+
+        kwargs: dict[str, Any] = {"provider": resolved_backend}
+        if resolved_backend == "neo4j":
+            kwargs["uri"] = settings.neo4j_uri
+            kwargs["auth"] = (settings.neo4j_user, settings.neo4j_password)
+            kwargs["database"] = settings.neo4j_database
+        try:
+            return create_graph_store(**kwargs), resolved_backend
+        except ImportError as exc:
+            raise api_error(
+                424,
+                "missing_dependency",
+                "Graph backend dependency is not available",
+                {"backend": resolved_backend, "error": str(exc)},
+            ) from exc
+        except ValueError as exc:
+            raise api_error(
+                400,
+                "invalid_graph_backend_config",
+                "Graph backend configuration is invalid",
+                {"backend": resolved_backend, "error": str(exc)},
+            ) from exc
+        except Exception as exc:
+            raise api_error(
+                424,
+                "graph_backend_unavailable",
+                "Graph backend is unavailable",
+                {"backend": resolved_backend, "error": str(exc)},
+            ) from exc
 
     def _load_store_for_build(self, row: GraphBuild):
-        store, backend = create_graph_store(row.backend)
+        store, backend = self._create_graph_store(row.backend)
         if backend != "networkx":
             return store
         if not row.artifact_uri:
@@ -314,8 +422,13 @@ class GraphService:
         for row in rows:
             try:
                 seg_type = SegmentType(row.type)
-            except Exception:
-                seg_type = SegmentType.TEXT
+            except Exception as exc:
+                raise api_error(
+                    500,
+                    "invalid_segment_type",
+                    "Persisted segment/chunk item type is invalid",
+                    {"item_id": row.item_id, "type": row.type, "allowed": [e.value for e in SegmentType]},
+                ) from exc
             segments.append(
                 Segment(
                     content=row.content,

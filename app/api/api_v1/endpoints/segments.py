@@ -19,7 +19,6 @@ from app.services.index_service import IndexService
 from app.services.segment_service import SegmentService
 from app.services.segment_transform_service import SegmentTransformService
 from app.services.serializers import segment_item_out, segment_set_out
-from app.workers.tasks import run_segment_enrich, run_segment_raptor
 
 router = APIRouter()
 
@@ -117,6 +116,8 @@ async def enrich_segment_set(
     base = await seg_svc.get_segment_set(segment_set_id)
 
     if request.execution_mode == "async":
+        from app.workers.tasks import run_segment_enrich
+
         require_feature(settings.feature_enable_llm, "llm", hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.")
         job_svc = IndexService(session)
         job = await job_svc.create_job(
@@ -162,6 +163,8 @@ async def raptor_segment_set(
     base = await seg_svc.get_segment_set(segment_set_id)
 
     if request.execution_mode == "async":
+        from app.workers.tasks import run_segment_raptor
+
         require_feature(settings.feature_enable_raptor, "raptor", hint="Set FEATURE_ENABLE_RAPTOR=true to enable RAPTOR processing.")
         require_feature(settings.feature_enable_llm, "llm", hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.")
         job_svc = IndexService(session)

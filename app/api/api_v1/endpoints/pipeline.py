@@ -10,7 +10,6 @@ from app.schemas.pipeline import PipelineRequestMeta, PipelineResponse
 from app.services.index_service import IndexService
 from app.services.pipeline_service import PipelineService
 from app.storage.object_store import object_store
-from app.workers.tasks import run_pipeline
 
 router = APIRouter()
 
@@ -48,6 +47,8 @@ async def pipeline_file(
     payload = await file.read()
 
     if execution_mode == "async":
+        from app.workers.tasks import run_pipeline
+
         index_svc = IndexService(session)
         job = await index_svc.create_job(
             project_id=project_id,

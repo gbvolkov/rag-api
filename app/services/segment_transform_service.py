@@ -134,8 +134,13 @@ class SegmentTransformService:
         for row in rows:
             try:
                 seg_type = SegmentType(row.type)
-            except Exception:
-                seg_type = SegmentType.TEXT
+            except Exception as exc:
+                raise api_error(
+                    500,
+                    "invalid_segment_type",
+                    "Persisted segment item type is invalid",
+                    {"item_id": row.item_id, "type": row.type, "allowed": [e.value for e in SegmentType]},
+                ) from exc
             out.append(
                 Segment(
                     content=row.content,
