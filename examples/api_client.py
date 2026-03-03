@@ -92,32 +92,49 @@ class ApiClient:
             },
         )
 
-    def create_chunks(self, segment_set_id: str, strategy: str, chunker_params: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._request("POST", f"/segment_sets/{segment_set_id}/chunk", json={"strategy": strategy, "chunker_params": chunker_params or {}})
-
-    def create_chunks_from_chunk_set(self, chunk_set_id: str, strategy: str, chunker_params: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._request("POST", f"/chunk_sets/{chunk_set_id}/chunk", json={"strategy": strategy, "chunker_params": chunker_params or {}})
+    def split_segment_set(
+        self,
+        segment_set_id: str,
+        strategy: str,
+        splitter_params: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/segment_sets/{segment_set_id}/split",
+            json={
+                "strategy": strategy,
+                "splitter_params": splitter_params or {},
+                "params": params or {},
+            },
+        )
 
     def create_index(self, project_id: str, name: str, provider: str, config: dict[str, Any] | None = None, params: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request(
             "POST",
             f"/projects/{project_id}/indexes",
-            json={"name": name, "provider": provider, "index_type": "chunk_vectors", "config": config or {}, "params": params or {}},
+            json={"name": name, "provider": provider, "index_type": "segment_vectors", "config": config or {}, "params": params or {}},
         )
 
     def create_index_build(
         self,
         index_id: str,
-        chunk_set_version_id: str,
+        source_set_id: str,
         execution_mode: str = "sync",
         params: dict[str, Any] | None = None,
+        parent_set_id: str | None = None,
+        id_key: str | None = None,
         doc_store: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
-            "chunk_set_version_id": chunk_set_version_id,
+            "source_set_id": source_set_id,
             "execution_mode": execution_mode,
             "params": params or {},
         }
+        if parent_set_id is not None:
+            payload["parent_set_id"] = parent_set_id
+        if id_key is not None:
+            payload["id_key"] = id_key
         if doc_store is not None:
             payload["doc_store"] = doc_store
         return self._request(

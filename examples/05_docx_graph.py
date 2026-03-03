@@ -103,10 +103,10 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Create chunks (regex hierarchy)")
-        chunk = api.create_chunks(
+        chunk = api.split_segment_set(
             artifacts["segment_set_version_id"],
             strategy="regex_hierarchy",
-            chunker_params={
+            splitter_params={
                 "patterns": [
                     [1, r"^\s*#\s+(.+)$"],
                     [2, r"^\s*##\s+(.+)$"],
@@ -117,18 +117,18 @@ def run_example(client=None):
                 "include_parent_content": False,
             },
         )
-        artifacts["chunk_set_version_id"] = chunk["chunk_set"]["chunk_set_version_id"]
+        artifacts["source_set_id"] = chunk["segment_set"]["segment_set_version_id"]
         print_kv(
             "Chunks created",
-            {"chunk_set_version_id": artifacts["chunk_set_version_id"], "items": len(chunk["items"])},
+            {"source_set_id": artifacts["source_set_id"], "items": len(chunk["items"])},
         )
         section += 1
 
         print_section(section, "Create graph build")
         gb = api.create_graph_build(
             artifacts["project_id"],
-            source_type="chunk_set",
-            source_id=artifacts["chunk_set_version_id"],
+            source_type="segment_set",
+            source_id=artifacts["source_set_id"],
             backend="networkx",
             execution_mode="sync",
             params={"extract_entities": True, "llm_provider": "openai", "llm_model": "gpt-4.1-nano", "llm_temperature": 0},
@@ -146,8 +146,8 @@ def run_example(client=None):
                     artifacts["project_id"],
                     {
                         "query": query,
-                        "target": "graph_build",
-                        "target_id": artifacts["graph_build_id"],
+                        "target": "segment_set",
+                        "target_id": artifacts["source_set_id"],
                         "strategy": _graph_strategy(artifacts["graph_build_id"], mode),
                         "persist": True,
                     },

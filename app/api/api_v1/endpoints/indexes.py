@@ -52,7 +52,9 @@ async def create_index_build(index_id: str, request: CreateIndexBuildRequest, se
     svc = IndexService(session)
     build = await svc.create_build(
         index_id,
-        request.chunk_set_version_id,
+        request.source_set_id,
+        request.parent_set_id,
+        request.id_key,
         request.params,
         doc_store=request.doc_store.model_dump() if request.doc_store else None,
         status="queued",

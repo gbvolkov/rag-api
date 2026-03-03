@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VectorConfig(BaseModel):
@@ -44,6 +44,8 @@ class RerankConfig(BaseModel):
 
 
 class DualStorageConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     type: Literal["dual_storage"] = "dual_storage"
     vector_search: dict[str, Any] = Field(default_factory=lambda: {"k": 10})
     id_key: str = "parent_id"
@@ -96,9 +98,11 @@ StrategyConfig = VectorConfig | BM25Config | RegexConfig | FuzzyConfig | Ensembl
 
 
 class RetrieveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     query: str
-    target: str = Field(default="chunk_set", description="chunk_set|segment_set|index_build|graph_build")
-    target_id: str | None = None
+    target: Literal["segment_set", "index_build"] = Field(description="segment_set|index_build")
+    target_id: str
     strategy: StrategyConfig = Field(discriminator="type")
     persist: bool = True
     limit: int = 20
@@ -117,7 +121,7 @@ class RetrieveResponse(BaseModel):
     has_more: bool = False
     strategy: str
     target: str
-    target_id: str | None = None
+    target_id: str
     total: int
     run_id: str | None = None
 

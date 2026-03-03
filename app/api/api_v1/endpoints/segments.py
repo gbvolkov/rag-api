@@ -11,6 +11,7 @@ from app.schemas.segment import (
     EnrichSegmentsRequest,
     RaptorRunOut,
     RaptorSegmentsRequest,
+    SplitSegmentsRequest,
     SegmentSetWithItems,
 )
 from app.models import RaptorRun
@@ -99,6 +100,21 @@ async def clone_patch_segment_item(
 ):
     svc = SegmentService(session)
     row = await svc.clone_patch_item(segment_set_id, request.item_id, request.patch, request.params)
+    items = await svc.list_items(row.segment_set_version_id)
+    return SegmentSetWithItems(
+        segment_set=segment_set_out(row, total_items=len(items)),
+        items=[segment_item_out(i) for i in items],
+    )
+
+
+@router.post("/segment_sets/{segment_set_id}/split", response_model=SegmentSetWithItems)
+async def split_segment_set(
+    segment_set_id: str,
+    request: SplitSegmentsRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    svc = SegmentService(session)
+    row = await svc.split_from_segment_set(segment_set_id, request.strategy, request.splitter_params, request.params)
     items = await svc.list_items(row.segment_set_version_id)
     return SegmentSetWithItems(
         segment_set=segment_set_out(row, total_items=len(items)),

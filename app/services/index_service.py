@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.capabilities import require_choice
 from app.core.config import settings
 from app.core.errors import api_error
-from app.models import ChunkItem, ChunkSetVersion, Index, IndexBuild, Job, SegmentItem
+from app.models import Index, IndexBuild, Job, SegmentItem, SegmentSetVersion
 from app.services.vector_store_adapter import create_vector_store_for_build, vector_store_manifest
 from app.storage.object_store import object_store
 
@@ -58,27 +58,56 @@ class IndexService:
     async def create_build(
         self,
         index_id: str,
-        chunk_set_version_id: str,
+        source_set_id: str,
+        parent_set_id: str | None,
+        id_key: str | None,
         params: dict,
         doc_store: dict[str, Any] | None = None,
         status: str = "queued",
     ) -> IndexBuild:
         index_row = await self.get_index(index_id)
 
-        chunk_set = await self.session.get(ChunkSetVersion, chunk_set_version_id)
-        if not chunk_set or chunk_set.is_deleted:
-            raise api_error(404, "chunk_set_not_found", "Chunk set not found", {"chunk_set_version_id": chunk_set_version_id})
+        source_set = await self.session.get(SegmentSetVersion, source_set_id)
+        if not source_set or source_set.is_deleted or source_set.project_id != index_row.project_id:
+            raise api_error(404, "segment_set_not_found", "Source segment set not found", {"source_set_id": source_set_id})
+
+        if parent_set_id:
+            parent_set = await self.session.get(SegmentSetVersion, parent_set_id)
+            if not parent_set or parent_set.is_deleted or parent_set.project_id != index_row.project_id:
+                raise api_error(404, "segment_set_not_found", "Parent segment set not found", {"parent_set_id": parent_set_id})
+
+        if doc_store is not None:
+            if not parent_set_id:
+                raise api_error(
+                    400,
+                    "invalid_index_build_config",
+                    "parent_set_id is required when doc_store is configured",
+                )
+            if not isinstance(id_key, str) or not id_key.strip():
+                raise api_error(
+                    400,
+                    "invalid_index_build_config",
+                    "id_key is required when doc_store is configured",
+                )
+            id_key = id_key.strip()
 
         payload_params = dict(params or {})
         if doc_store is not None:
             payload_params["doc_store"] = doc_store
 
+        input_refs = {"source_set_id": source_set_id}
+        if parent_set_id:
+            input_refs["parent_set_id"] = parent_set_id
+        if id_key:
+            input_refs["id_key"] = id_key
+
         build = IndexBuild(
             index_id=index_id,
             project_id=index_row.project_id,
-            chunk_set_version_id=chunk_set_version_id,
+            source_set_id=source_set_id,
+            parent_set_id=parent_set_id,
             params_json=payload_params,
-            input_refs_json={"chunk_set_version_id": chunk_set_version_id},
+            input_refs_json=input_refs,
             status=status,
             producer_type="rag_lib",
             producer_version=settings.rag_lib_producer_version,
@@ -116,24 +145,24 @@ class IndexService:
         build.status = "running"
         await self.session.commit()
 
-        chunk_set_row = await self.session.get(ChunkSetVersion, build.chunk_set_version_id)
-        if not chunk_set_row or chunk_set_row.is_deleted:
+        source_set = await self.session.get(SegmentSetVersion, build.source_set_id)
+        if not source_set or source_set.is_deleted:
             build.status = "failed"
             await self.session.commit()
-            raise api_error(404, "chunk_set_not_found", "Chunk set not found", {"chunk_set_version_id": build.chunk_set_version_id})
+            raise api_error(404, "segment_set_not_found", "Source segment set not found", {"source_set_id": build.source_set_id})
 
-        chunk_stmt = (
-            select(ChunkItem)
-            .where(ChunkItem.chunk_set_version_id == build.chunk_set_version_id)
-            .order_by(ChunkItem.position.asc())
+        source_stmt = (
+            select(SegmentItem)
+            .where(SegmentItem.segment_set_version_id == build.source_set_id)
+            .order_by(SegmentItem.position.asc())
         )
-        chunks_res = await self.session.execute(chunk_stmt)
-        chunks = list(chunks_res.scalars().all())
+        source_res = await self.session.execute(source_stmt)
+        source_items = list(source_res.scalars().all())
 
-        if not chunks:
+        if not source_items:
             build.status = "failed"
             await self.session.commit()
-            raise api_error(400, "empty_chunk_set", "Chunk set has no items", {"chunk_set_version_id": build.chunk_set_version_id})
+            raise api_error(400, "empty_segment_set", "Source segment set has no items", {"source_set_id": build.source_set_id})
 
         cfg = dict(index_row.config_json or {})
         if provider in {"qdrant", "chroma", "postgres"}:
@@ -154,22 +183,34 @@ class IndexService:
 
         doc_store_config = (build.params_json or {}).get("doc_store")
         doc_store_manifest: dict[str, Any] | None = None
+        parent_segments = None
+        indexer_doc_store = None
 
         try:
             if doc_store_config is not None:
-                doc_store_manifest = await self._build_doc_store_manifest(
+                id_key_raw = (build.input_refs_json or {}).get("id_key")
+                if not isinstance(id_key_raw, str) or not id_key_raw.strip():
+                    raise api_error(500, "invalid_index_build", "Index build id_key is missing", {"build_id": build.build_id})
+                if not build.parent_set_id:
+                    raise api_error(500, "invalid_index_build", "Index build parent_set_id is missing", {"build_id": build.build_id})
+                doc_store_manifest, parent_segments, indexer_doc_store = await self._build_doc_store_manifest(
                     build=build,
-                    chunk_set_row=chunk_set_row,
-                    chunks=chunks,
+                    source_items=source_items,
+                    parent_set_id=build.parent_set_id,
+                    id_key=id_key_raw.strip(),
                     config=doc_store_config,
                 )
             vector_store = create_vector_store_for_build(index_row=index_row, embeddings=embeddings)
             from rag_lib.core.indexer import Indexer
 
-            indexer = Indexer(vector_store=vector_store, embeddings=embeddings)
+            indexer = Indexer(
+                vector_store=vector_store,
+                embeddings=embeddings,
+                doc_store=indexer_doc_store,
+            )
             indexer.index(
-                segments=self._chunks_to_segments(chunks),
-                parent_segments=None,
+                segments=self._segment_items_to_segments(source_items),
+                parent_segments=parent_segments,
                 batch_size=int((build.params_json or {}).get("batch_size", 100)),
             )
 
@@ -189,8 +230,12 @@ class IndexService:
                 cfg["faiss_local_dir"] = str(faiss_dir)
                 index_row.config_json = cfg
 
-            manifest = vector_store_manifest(index_row=index_row, build_id=build.build_id, count=len(chunks))
-            manifest["chunk_set_version_id"] = build.chunk_set_version_id
+            manifest = vector_store_manifest(index_row=index_row, build_id=build.build_id, count=len(source_items))
+            manifest["source_set_id"] = build.source_set_id
+            if build.parent_set_id:
+                manifest["parent_set_id"] = build.parent_set_id
+            if (build.input_refs_json or {}).get("id_key"):
+                manifest["id_key"] = (build.input_refs_json or {}).get("id_key")
             if doc_store_manifest is not None:
                 manifest["doc_store"] = doc_store_manifest
         except Exception:
@@ -225,47 +270,19 @@ class IndexService:
         self,
         *,
         build: IndexBuild,
-        chunk_set_row: ChunkSetVersion,
-        chunks: list[ChunkItem],
+        source_items: list[SegmentItem],
+        parent_set_id: str,
+        id_key: str,
         config: dict[str, Any],
-    ) -> dict[str, Any]:
-        source = str(config.get("source", "auto")).lower()
-        if source not in {"auto", "segment_set", "parent_chunk_set"}:
-            raise api_error(
-                400,
-                "invalid_doc_store_source",
-                "doc_store.source must be one of auto, segment_set, parent_chunk_set",
-                {"source": source},
-            )
-
-        id_key_raw = config.get("id_key", "parent_id")
-        id_key = str(id_key_raw).strip() if id_key_raw is not None else "parent_id"
-        if not id_key:
-            raise api_error(400, "invalid_doc_store_id_key", "doc_store.id_key must be a non-empty string")
-
-        if source == "auto":
-            source = "parent_chunk_set" if chunk_set_row.parent_chunk_set_version_id else "segment_set"
-
-        if source == "segment_set":
-            source_id = chunk_set_row.segment_set_version_id
-        else:
-            source_id = chunk_set_row.parent_chunk_set_version_id
-            if not source_id:
-                raise api_error(
-                    400,
-                    "doc_store_source_unavailable",
-                    "Requested doc_store source parent_chunk_set is unavailable for chunk set",
-                    {"chunk_set_version_id": chunk_set_row.chunk_set_version_id},
-                )
-
+    ) -> tuple[dict[str, Any], list[Any], Any]:
         parent_ids: list[str] = []
         seen: set[str] = set()
-        missing_parent_key_chunk_ids: list[str] = []
-        for chunk in chunks:
-            metadata = chunk.metadata_json or {}
+        missing_parent_key_item_ids: list[str] = []
+        for item in source_items:
+            metadata = item.metadata_json or {}
             parent_id = metadata.get(id_key)
             if parent_id is None:
-                missing_parent_key_chunk_ids.append(chunk.item_id)
+                missing_parent_key_item_ids.append(item.item_id)
                 continue
             parent_id_str = str(parent_id)
             if parent_id_str in seen:
@@ -273,15 +290,15 @@ class IndexService:
             seen.add(parent_id_str)
             parent_ids.append(parent_id_str)
 
-        if missing_parent_key_chunk_ids:
+        if missing_parent_key_item_ids:
             raise api_error(
                 400,
                 "doc_store_parent_key_missing",
-                "Chunk metadata is missing configured doc_store id_key",
+                "Source segment metadata is missing configured id_key",
                 {
                     "id_key": id_key,
-                    "missing_parent_key_chunk_ids": missing_parent_key_chunk_ids[:50],
-                    "missing_parent_key_count": len(missing_parent_key_chunk_ids),
+                    "missing_parent_key_item_ids": missing_parent_key_item_ids[:50],
+                    "missing_parent_key_count": len(missing_parent_key_item_ids),
                 },
             )
 
@@ -289,125 +306,160 @@ class IndexService:
             raise api_error(
                 400,
                 "doc_store_empty_parent_ids",
-                "Configured doc_store id_key produced no parent ids",
+                "Configured id_key produced no parent ids",
                 {"id_key": id_key},
             )
 
-        parent_docs_by_id: dict[str, dict[str, Any]] = {}
-        if source == "segment_set":
-            parent_stmt = select(SegmentItem).where(
-                SegmentItem.segment_set_version_id == source_id,
-                SegmentItem.item_id.in_(parent_ids),
-            )
-            parent_res = await self.session.execute(parent_stmt)
-            parent_rows = list(parent_res.scalars().all())
-            for row in parent_rows:
-                parent_docs_by_id[row.item_id] = {
-                    "id": row.item_id,
-                    "page_content": row.content,
-                    "metadata": {
-                        **self._sanitize_metadata(row.metadata_json or {}),
-                        "item_id": row.item_id,
-                        id_key: row.item_id,
-                        "segment_set_version_id": row.segment_set_version_id,
-                    },
-                }
-        else:
-            parent_stmt = select(ChunkItem).where(
-                ChunkItem.chunk_set_version_id == source_id,
-                ChunkItem.item_id.in_(parent_ids),
-            )
-            parent_res = await self.session.execute(parent_stmt)
-            parent_rows = list(parent_res.scalars().all())
-            for row in parent_rows:
-                parent_docs_by_id[row.item_id] = {
-                    "id": row.item_id,
-                    "page_content": row.content,
-                    "metadata": {
-                        **self._sanitize_metadata(row.metadata_json or {}),
-                        "item_id": row.item_id,
-                        id_key: row.item_id,
-                        "chunk_set_version_id": row.chunk_set_version_id,
-                    },
-                }
+        parent_stmt = select(SegmentItem).where(
+            SegmentItem.segment_set_version_id == parent_set_id,
+            SegmentItem.item_id.in_(parent_ids),
+        )
+        parent_res = await self.session.execute(parent_stmt)
+        parent_rows = list(parent_res.scalars().all())
+        parent_segments_by_id = {row.item_id: self._segment_item_to_segment(row) for row in parent_rows}
 
-        missing_parent_ids = [pid for pid in parent_ids if pid not in parent_docs_by_id]
+        missing_parent_ids = [pid for pid in parent_ids if pid not in parent_segments_by_id]
         if missing_parent_ids:
             raise api_error(
                 400,
                 "doc_store_parent_not_found",
-                "Parent ids referenced by chunks were not found in configured doc_store source",
+                "Parent ids referenced by source segments were not found in parent_set_id",
                 {
-                    "source": source,
-                    "source_id": source_id,
+                    "parent_set_id": parent_set_id,
                     "missing_parent_ids": missing_parent_ids[:50],
                     "missing_parent_count": len(missing_parent_ids),
                 },
             )
 
-        items = [parent_docs_by_id[parent_id] for parent_id in parent_ids]
-        doc_store_payload = {
-            "version": 1,
-            "index_id": build.index_id,
-            "build_id": build.build_id,
-            "source": {"type": source, "id": source_id},
-            "id_key": id_key,
-            "items": items,
-        }
-        key = f"projects/{build.project_id}/indexes/{build.index_id}/builds/{build.build_id}/doc_store.json"
-        artifact_uri = object_store.put_json(key, doc_store_payload)
+        ordered_parent_segments = [parent_segments_by_id[parent_id] for parent_id in parent_ids]
+        doc_store, artifact_uri, backend_meta = self._create_persistent_doc_store(build=build, config=config)
 
-        return {
-            "source": source,
-            "source_id": source_id,
-            "id_key": id_key,
-            "artifact_uri": artifact_uri,
-            "total_items": len(items),
-        }
+        return (
+            {
+                "source_set_id": parent_set_id,
+                "id_key": id_key,
+                "artifact_uri": artifact_uri,
+                "total_items": len(ordered_parent_segments),
+                **backend_meta,
+            },
+            ordered_parent_segments,
+            doc_store,
+        )
 
-    def _sanitize_metadata(self, metadata: dict[str, Any]) -> dict[str, Any]:
-        out: dict[str, Any] = {}
-        for key, value in (metadata or {}).items():
-            if not isinstance(key, str):
-                continue
-            if value is None or isinstance(value, (str, int, float, bool)):
-                out[key] = value
-            else:
-                out[key] = str(value)
-        return out
+    def _segment_items_to_segments(self, rows: list[SegmentItem]):
+        return [self._segment_item_to_segment(row) for row in rows]
 
-    def _chunks_to_segments(self, chunks: list[ChunkItem]):
-        from rag_lib.core.domain import Segment, SegmentType
+    def _segment_item_to_segment(self, row: SegmentItem):
+        from rag_lib.core.domain import Segment
 
-        segments = []
-        for chunk in chunks:
-            try:
-                seg_type = SegmentType(chunk.type)
-            except Exception as exc:
-                raise api_error(
-                    500,
-                    "invalid_segment_type",
-                    "Persisted chunk item type is invalid",
-                    {"item_id": chunk.item_id, "type": chunk.type, "allowed": [e.value for e in SegmentType]},
-                ) from exc
+        return Segment(
+            content=row.content,
+            metadata={
+                "item_id": row.item_id,
+                "segment_set_version_id": row.segment_set_version_id,
+                **dict(row.metadata_json or {}),
+            },
+            segment_id=row.item_id,
+            parent_id=row.parent_id,
+            level=row.level,
+            path=row.path_json or [],
+            type=self._parse_segment_type(row.type, row.item_id),
+            original_format=row.original_format,
+        )
 
-            segments.append(
-                Segment(
-                    content=chunk.content,
-                    metadata={
-                        "chunk_item_id": chunk.item_id,
-                        "chunk_set_version_id": chunk.chunk_set_version_id,
-                        **self._sanitize_metadata(chunk.metadata_json or {}),
-                    },
-                    segment_id=chunk.item_id,
-                    parent_id=chunk.parent_id,
-                    level=chunk.level,
-                    path=chunk.path_json or [],
-                    type=seg_type,
-                    original_format=chunk.original_format,
-                )
+    def _parse_segment_type(self, raw_type: str, item_id: str):
+        from rag_lib.core.domain import SegmentType
+
+        try:
+            return SegmentType(raw_type)
+        except Exception as exc:
+            raise api_error(
+                500,
+                "invalid_segment_type",
+                "Persisted segment item type is invalid",
+                {"item_id": item_id, "type": raw_type, "allowed": [e.value for e in SegmentType]},
+            ) from exc
+
+    def _create_persistent_doc_store(self, *, build: IndexBuild, config: dict[str, Any]):
+        backend_raw = config.get("backend")
+        if not isinstance(backend_raw, str) or not backend_raw.strip():
+            raise api_error(
+                400,
+                "invalid_doc_store_backend",
+                "doc_store.backend must be provided and be one of local_file, redis",
             )
-        return segments
+        backend = backend_raw.strip().lower()
+        if backend not in {"local_file", "redis"}:
+            raise api_error(
+                400,
+                "invalid_doc_store_backend",
+                "doc_store.backend must be one of local_file, redis",
+                {"backend": backend_raw},
+            )
+
+        if backend == "local_file":
+            from langchain_classic.storage import LocalFileStore, create_kv_docstore
+
+            store_root = (
+                Path(settings.local_object_store_path)
+                / "projects"
+                / build.project_id
+                / "indexes"
+                / build.index_id
+                / "builds"
+                / build.build_id
+                / "doc_store"
+            )
+            store_root.mkdir(parents=True, exist_ok=True)
+            byte_store = LocalFileStore(store_root)
+            return create_kv_docstore(byte_store), str(store_root), {"backend": "local_file"}
+
+        redis_url_raw = config.get("redis_url")
+        if not isinstance(redis_url_raw, str) or not redis_url_raw.strip():
+            raise api_error(
+                400,
+                "invalid_doc_store_redis_url",
+                "doc_store.redis_url is required when backend=redis",
+                {"redis_url": redis_url_raw},
+            )
+        redis_url = redis_url_raw.strip()
+
+        namespace_raw = config.get("redis_namespace")
+        if not isinstance(namespace_raw, str) or not namespace_raw.strip():
+            raise api_error(
+                400,
+                "invalid_doc_store_redis_namespace",
+                "doc_store.redis_namespace is required when backend=redis",
+                {"redis_namespace": namespace_raw},
+            )
+        namespace = namespace_raw.strip()
+
+        ttl_raw = config.get("redis_ttl")
+        try:
+            redis_ttl = int(ttl_raw)
+        except (TypeError, ValueError) as exc:
+            raise api_error(
+                400,
+                "invalid_doc_store_redis_ttl",
+                "doc_store.redis_ttl must be a positive integer when backend=redis",
+                {"redis_ttl": ttl_raw},
+            ) from exc
+        if redis_ttl <= 0:
+            raise api_error(
+                400,
+                "invalid_doc_store_redis_ttl",
+                "doc_store.redis_ttl must be a positive integer when backend=redis",
+                {"redis_ttl": ttl_raw},
+            )
+
+        from langchain_classic.storage import RedisStore, create_kv_docstore
+
+        byte_store = RedisStore(redis_url=redis_url, namespace=namespace, ttl=redis_ttl)
+        return create_kv_docstore(byte_store), redis_url, {
+            "backend": "redis",
+            "redis_namespace": namespace,
+            "redis_ttl": redis_ttl,
+        }
 
     def _get_embeddings(self, index_row: Index):
         provider = index_row.config_json.get("embedding_provider", "mock")

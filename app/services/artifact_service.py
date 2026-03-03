@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import api_error
 from app.models import (
     ArtifactSoftDelete,
-    ChunkSetVersion,
     Document,
     DocumentVersion,
     GraphBuild,
@@ -63,14 +62,6 @@ class ArtifactService:
             "created_at",
             "is_deleted",
             lambda r: {"document_version_id": r.document_version_id, "is_active": r.is_active},
-        )
-        await add_rows(
-            select(ChunkSetVersion).where(ChunkSetVersion.project_id == project_id),
-            "chunk_set",
-            "chunk_set_version_id",
-            "created_at",
-            "is_deleted",
-            lambda r: {"segment_set_version_id": r.segment_set_version_id, "is_active": r.is_active},
         )
         await add_rows(
             select(Index).where(Index.project_id == project_id),
@@ -154,7 +145,6 @@ class ArtifactService:
             (Document, "document", "project_id", "document_id"),
             (DocumentVersion, "document_version", "document_id", "version_id"),
             (SegmentSetVersion, "segment_set", "project_id", "segment_set_version_id"),
-            (ChunkSetVersion, "chunk_set", "project_id", "chunk_set_version_id"),
             (Index, "index", "project_id", "index_id"),
             (IndexBuild, "index_build", "project_id", "build_id"),
             (GraphBuild, "graph_build", "project_id", "graph_build_id"),

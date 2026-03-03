@@ -95,32 +95,49 @@ class _LocalApiClient:
             },
         )
 
-    def create_chunks(self, segment_set_id: str, strategy: str, chunker_params: dict[str, Any] | None = None):
-        return self._request("POST", f"/segment_sets/{segment_set_id}/chunk", json={"strategy": strategy, "chunker_params": chunker_params or {}})
-
-    def create_chunks_from_chunk_set(self, chunk_set_id: str, strategy: str, chunker_params: dict[str, Any] | None = None):
-        return self._request("POST", f"/chunk_sets/{chunk_set_id}/chunk", json={"strategy": strategy, "chunker_params": chunker_params or {}})
+    def split_segment_set(
+        self,
+        segment_set_id: str,
+        strategy: str,
+        splitter_params: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ):
+        return self._request(
+            "POST",
+            f"/segment_sets/{segment_set_id}/split",
+            json={
+                "strategy": strategy,
+                "splitter_params": splitter_params or {},
+                "params": params or {},
+            },
+        )
 
     def create_index(self, project_id: str, name: str, provider: str, config: dict[str, Any] | None = None, params: dict[str, Any] | None = None):
         return self._request(
             "POST",
             f"/projects/{project_id}/indexes",
-            json={"name": name, "provider": provider, "index_type": "chunk_vectors", "config": config or {}, "params": params or {}},
+            json={"name": name, "provider": provider, "index_type": "segment_vectors", "config": config or {}, "params": params or {}},
         )
 
     def create_index_build(
         self,
         index_id: str,
-        chunk_set_version_id: str,
+        source_set_id: str,
         execution_mode: str = "sync",
         params: dict[str, Any] | None = None,
+        parent_set_id: str | None = None,
+        id_key: str | None = None,
         doc_store: dict[str, Any] | None = None,
     ):
         payload: dict[str, Any] = {
-            "chunk_set_version_id": chunk_set_version_id,
+            "source_set_id": source_set_id,
             "execution_mode": execution_mode,
             "params": params or {},
         }
+        if parent_set_id is not None:
+            payload["parent_set_id"] = parent_set_id
+        if id_key is not None:
+            payload["id_key"] = id_key
         if doc_store is not None:
             payload["doc_store"] = doc_store
         return self._request(
@@ -169,11 +186,11 @@ def _setup_feature_mocks(monkeypatch):
     monkeypatch.setattr("rag_lib.processors.entity_extractor.EntityExtractor.process_segments", lambda self, segments: None)
 
     async def _graph_ainvoke(_self, query: str):
-        return [LCDocument(page_content=f"graph:{query}", metadata={"retrieval_kind": "chunk", "score": 1.0})]
+        return [LCDocument(page_content=f"graph:{query}", metadata={"retrieval_kind": "segment", "score": 1.0})]
 
     monkeypatch.setattr("rag_lib.retrieval.graph_retriever.GraphRetriever.ainvoke", _graph_ainvoke)
     async def _query_graph(_self, graph_build_id, project_id, query, mode="hybrid", graph_query_config=None):
-        return [LCDocument(page_content=f"graph:{query}", metadata={"retrieval_kind": "chunk", "score": 1.0})]
+        return [LCDocument(page_content=f"graph:{query}", metadata={"retrieval_kind": "segment", "score": 1.0})]
 
     monkeypatch.setattr("app.services.graph_service.GraphService.query_graph", _query_graph)
     async def _run_vector(_self, project_id: str, request):
@@ -213,6 +230,17 @@ def _setup_feature_mocks(monkeypatch):
         return [LCDocument(page_content="web-async", metadata={"source": "https://example.com"})]
 
     monkeypatch.setattr("rag_lib.loaders.web_async.AsyncWebLoader.load", _aload)
+
+    class _DummyPyMuPDFLoader:
+        def __init__(self, file_path: str, output_format: str = "markdown"):
+            self.file_path = file_path
+            self.output_format = output_format
+
+        def load(self):
+            return [LCDocument(page_content="pymupdf content", metadata={"source": self.file_path, "output_format": self.output_format})]
+
+    monkeypatch.setattr("rag_lib.loaders.pymupdf.PyMuPDFLoader", _DummyPyMuPDFLoader)
+
     class _DummyMinerULoader:
         def __init__(self, file_path: str, **kwargs):
             self.file_path = file_path
@@ -222,20 +250,20 @@ def _setup_feature_mocks(monkeypatch):
 
     monkeypatch.setattr("rag_lib.loaders.miner_u.MinerULoader", _DummyMinerULoader)
 
-    from app.services import chunk_service as chunk_service_module
+    from app.services import segment_service as segment_service_module
 
     class _DummySemanticChunker:
         def split_text(self, text: str):
             return [text[: max(1, len(text) // 2)], text[max(1, len(text) // 2) :]]
 
-    original_build = chunk_service_module.ChunkService._build_chunker
+    original_build = segment_service_module.SegmentService._build_splitter
 
     def patched_build(self, strategy: str, params: dict):
         if strategy == "semantic":
             return _DummySemanticChunker()
         return original_build(self, strategy, params)
 
-    monkeypatch.setattr(chunk_service_module.ChunkService, "_build_chunker", patched_build)
+    monkeypatch.setattr(segment_service_module.SegmentService, "_build_splitter", patched_build)
 
 
 def _run_example(path: Path, local_client):

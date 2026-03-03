@@ -1,13 +1,13 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class CreateIndexRequest(BaseModel):
     name: str
     provider: str = "qdrant"
-    index_type: str = "chunk_vectors"
+    index_type: str = "segment_vectors"
     config: dict[str, Any] = Field(default_factory=dict)
     params: dict[str, Any] = Field(default_factory=dict)
 
@@ -27,30 +27,60 @@ class IndexOut(BaseModel):
 
 
 class IndexBuildDocStoreConfig(BaseModel):
-    source: Literal["auto", "segment_set", "parent_chunk_set"] = "auto"
-    id_key: str = "parent_id"
+    model_config = ConfigDict(extra="forbid")
+
+    backend: Literal["local_file", "redis"]
+    redis_url: str | None = None
+    redis_namespace: str | None = None
+    redis_ttl: int | None = None
+
+    @model_validator(mode="after")
+    def validate_backend_payload(self):
+        if self.backend == "redis":
+            if not isinstance(self.redis_url, str) or not self.redis_url.strip():
+                raise ValueError("doc_store.redis_url is required when backend=redis")
+            if not isinstance(self.redis_namespace, str) or not self.redis_namespace.strip():
+                raise ValueError("doc_store.redis_namespace is required when backend=redis")
+            if not isinstance(self.redis_ttl, int) or self.redis_ttl <= 0:
+                raise ValueError("doc_store.redis_ttl is required when backend=redis and must be > 0")
+        return self
 
 
 class IndexBuildDocStoreOut(BaseModel):
-    source: Literal["segment_set", "parent_chunk_set"]
-    source_id: str
-    id_key: str
+    backend: Literal["local_file", "redis"]
     artifact_uri: str
     total_items: int
+    redis_namespace: str | None = None
+    redis_ttl: int | None = None
 
 
 class CreateIndexBuildRequest(BaseModel):
-    chunk_set_version_id: str
+    model_config = ConfigDict(extra="forbid")
+
+    source_set_id: str
+    parent_set_id: str | None = None
+    id_key: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
     doc_store: IndexBuildDocStoreConfig | None = None
-    execution_mode: str = "sync"
+    execution_mode: Literal["sync", "async"] = "sync"
+
+    @model_validator(mode="after")
+    def validate_dual_storage_contract(self):
+        if self.doc_store is not None:
+            if not self.parent_set_id:
+                raise ValueError("parent_set_id is required when doc_store is configured")
+            if not isinstance(self.id_key, str) or not self.id_key.strip():
+                raise ValueError("id_key is required when doc_store is configured")
+        return self
 
 
 class IndexBuildOut(BaseModel):
     build_id: str
     index_id: str
     project_id: str
-    chunk_set_version_id: str
+    source_set_id: str
+    parent_set_id: str | None = None
+    id_key: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
     input_refs: dict[str, Any] = Field(default_factory=dict)
     artifact_uri: str | None = None

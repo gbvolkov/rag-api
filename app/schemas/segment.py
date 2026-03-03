@@ -111,6 +111,29 @@ class ClonePatchSegmentRequest(BaseModel):
     params: dict[str, Any] = Field(default_factory=dict)
 
 
+class SplitSegmentsRequest(BaseModel):
+    strategy: str = Field(
+        description=(
+            "Split strategy. Supported: recursive|token|sentence|regex|regex_hierarchy|markdown_hierarchy|"
+            "json|qa|markdown_table|csv_table|html|semantic."
+        ),
+        examples=["regex", "recursive"],
+    )
+    splitter_params: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Strategy-specific options. For strategy=regex, 'pattern' is required and passed to Python re.split. "
+            "If the pattern uses capturing groups, those captures are returned as standalone segments."
+        ),
+        examples=[
+            {"pattern": "\\.\\s+"},
+            {"pattern": "(?=Section\\s+\\d+:)"},
+            {"pattern": "(\\.\\s+)"},
+        ],
+    )
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
 class SegmentSetWithItems(BaseModel):
     segment_set: SegmentSetOut
     items: list[SegmentItemOut]

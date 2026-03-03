@@ -37,30 +37,30 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Create parent chunks (regex)")
-        parent_chunks = api.create_chunks(
+        parent_chunks = api.split_segment_set(
             artifacts["segment_set_version_id"],
             strategy="regex",
-            chunker_params={
+            splitter_params={
                 "pattern": r"(?=Dual storage keeps compact searchable chunks in a vector index while storing)",
             },
         )
-        artifacts["parent_chunk_set_version_id"] = parent_chunks["chunk_set"]["chunk_set_version_id"]
+        artifacts["parent_source_set_id"] = parent_chunks["segment_set"]["segment_set_version_id"]
         print_kv(
             "Parent chunks created",
-            {"chunk_set_version_id": artifacts["parent_chunk_set_version_id"], "items": len(parent_chunks["items"])},
+            {"source_set_id": artifacts["parent_source_set_id"], "items": len(parent_chunks["items"])},
         )
         section += 1
 
         print_section(section, "Create child chunks (token)")
-        chunk = api.create_chunks_from_chunk_set(
-            artifacts["parent_chunk_set_version_id"],
+        chunk = api.split_segment_set(
+            artifacts["parent_source_set_id"],
             strategy="token",
-            chunker_params={"chunk_size": 35, "chunk_overlap": 8, "model_name": "cl100k_base"},
+            splitter_params={"chunk_size": 35, "chunk_overlap": 8, "model_name": "cl100k_base"},
         )
-        artifacts["chunk_set_version_id"] = chunk["chunk_set"]["chunk_set_version_id"]
+        artifacts["source_set_id"] = chunk["segment_set"]["segment_set_version_id"]
         print_kv(
             "Chunks created",
-            {"chunk_set_version_id": artifacts["chunk_set_version_id"], "items": len(chunk["items"])},
+            {"source_set_id": artifacts["source_set_id"], "items": len(chunk["items"])},
         )
         section += 1
 
@@ -74,9 +74,11 @@ def run_example(client=None):
         artifacts["index_id"] = idx["index_id"]
         build = api.create_index_build(
             artifacts["index_id"],
-            artifacts["chunk_set_version_id"],
+            artifacts["source_set_id"],
             execution_mode="sync",
-            doc_store={"source": "auto", "id_key": "parent_id"},
+            parent_set_id=artifacts["parent_source_set_id"],
+            id_key="source_segment_item_id",
+            doc_store={"backend": "local_file"},
         )
         artifacts["index_build_id"] = build["build"]["build_id"]
         print_kv(
@@ -96,7 +98,7 @@ def run_example(client=None):
                     "type": "dual_storage",
                     "vector_search": {"k": 5},
                     "search_kwargs": {"k": 5},
-                    "id_key": "parent_id",
+                    "id_key": "source_segment_item_id",
                     "search_type": "similarity_score_threshold",
                     "score_threshold": 0.0,
                 },

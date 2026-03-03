@@ -76,13 +76,6 @@ def export_results_json(api: Any, project_id: str, example_id: str) -> list[Path
         if segment_set_id:
             segments.append(_api_get(api, f"/segment_sets/{segment_set_id}"))
 
-    chunk_sets = _api_get(api, f"/projects/{project_id}/chunk_sets")
-    chunks = []
-    for chunk_set in chunk_sets:
-        chunk_set_id = chunk_set.get("chunk_set_version_id")
-        if chunk_set_id:
-            chunks.append(_api_get(api, f"/chunk_sets/{chunk_set_id}"))
-
     retrieval_runs = _api_get(api, f"/projects/{project_id}/retrieval_runs")
     retrieval_results = []
     for run in retrieval_runs:
@@ -93,7 +86,6 @@ def export_results_json(api: Any, project_id: str, example_id: str) -> list[Path
     files = [
         (f"{example_id}_documents_{timestamp}.json", documents),
         (f"{example_id}_segments_{timestamp}.json", segments),
-        (f"{example_id}_chunks_{timestamp}.json", chunks),
         (f"{example_id}_retrieval_results_{timestamp}.json", retrieval_results),
     ]
     written_paths: list[Path] = []

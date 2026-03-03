@@ -20,8 +20,8 @@ async def pipeline_file(
     file: UploadFile = File(...),
     loader_type: str = Form(...),
     loader_params_json: str | None = Form(default=None),
-    chunk_strategy: str = Form(default="recursive"),
-    chunker_params_json: str | None = Form(default=None),
+    split_strategy: str = Form(...),
+    splitter_params_json: str | None = Form(default=None),
     create_index: bool = Form(default=False),
     index_id: str | None = Form(default=None),
     index_params_json: str | None = Form(default=None),
@@ -30,14 +30,14 @@ async def pipeline_file(
     session: AsyncSession = Depends(get_session),
 ):
     loader_params = json.loads(loader_params_json) if loader_params_json else {}
-    chunker_params = json.loads(chunker_params_json) if chunker_params_json else {}
+    splitter_params = json.loads(splitter_params_json) if splitter_params_json else {}
     index_params = json.loads(index_params_json) if index_params_json else {}
 
     req = PipelineRequestMeta(
         loader_type=loader_type,
         loader_params=loader_params,
-        chunk_strategy=chunk_strategy,
-        chunker_params=chunker_params,
+        split_strategy=split_strategy,
+        splitter_params=splitter_params,
         create_index=create_index,
         index_id=index_id,
         index_params=index_params,
@@ -70,10 +70,10 @@ async def pipeline_file(
 
         return PipelineResponse(
             project_id=project_id,
-            document_id="",
-            document_version_id="",
-            segment_set_version_id="",
-            chunk_set_version_id="",
+            document_id=None,
+            document_version_id=None,
+            segment_set_version_id=None,
+            source_set_id=None,
             index_build_id=None,
             job_id=job.job_id,
             status="queued",
@@ -93,7 +93,7 @@ async def pipeline_file(
         document_id=out["document"].document_id,
         document_version_id=out["document_version"].version_id,
         segment_set_version_id=out["segment_set"].segment_set_version_id,
-        chunk_set_version_id=out["chunk_set"].chunk_set_version_id,
+        source_set_id=out["source_set"].segment_set_version_id,
         index_build_id=out["index_build"].build_id if out["index_build"] else None,
         job_id=None,
         status="succeeded",

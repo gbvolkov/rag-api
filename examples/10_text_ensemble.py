@@ -33,15 +33,15 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Create chunks (sentence)")
-        chunk = api.create_chunks(
+        chunk = api.split_segment_set(
             artifacts["segment_set_version_id"],
             strategy="sentence",
-            chunker_params={"chunk_size": 300, "chunk_overlap": 30, "language": "auto"},
+            splitter_params={"chunk_size": 300, "chunk_overlap": 30, "language": "auto"},
         )
-        artifacts["chunk_set_version_id"] = chunk["chunk_set"]["chunk_set_version_id"]
+        artifacts["source_set_id"] = chunk["segment_set"]["segment_set_version_id"]
         print_kv(
             "Chunks created",
-            {"chunk_set_version_id": artifacts["chunk_set_version_id"], "items": len(chunk["items"])},
+            {"source_set_id": artifacts["source_set_id"], "items": len(chunk["items"])},
         )
         section += 1
 
@@ -53,7 +53,7 @@ def run_example(client=None):
             config={"embedding_provider": "openai", "embedding_model_name": "text-embedding-3-small"},
         )
         artifacts["index_id"] = idx["index_id"]
-        build = api.create_index_build(artifacts["index_id"], artifacts["chunk_set_version_id"], execution_mode="sync")
+        build = api.create_index_build(artifacts["index_id"], artifacts["source_set_id"], execution_mode="sync")
         artifacts["index_build_id"] = build["build"]["build_id"]
         print_kv(
             "Index build completed",
@@ -69,8 +69,8 @@ def run_example(client=None):
             artifacts["project_id"],
             {
                 "query": query,
-                "target": "chunk_set",
-                "target_id": artifacts["chunk_set_version_id"],
+                "target": "segment_set",
+                "target_id": artifacts["source_set_id"],
                 "strategy": {"type": "bm25", "k": 3},
                 "persist": True,
             },

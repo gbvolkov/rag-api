@@ -1,11 +1,13 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreateGraphBuildRequest(BaseModel):
-    source_type: Literal["segment_set", "chunk_set"] = "segment_set"
+    model_config = ConfigDict(extra="forbid")
+
+    source_type: Literal["segment_set"] = "segment_set"
     source_id: str
     backend: Literal["neo4j", "networkx"] | None = None
     extract_entities: bool = True
@@ -35,4 +37,3 @@ class GraphBuildOut(BaseModel):
     is_deleted: bool
     created_at: datetime
     updated_at: datetime
-

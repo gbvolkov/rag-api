@@ -243,6 +243,61 @@ class SegmentService:
             input_refs={"url": url},
         )
 
+    async def split_from_segment_set(
+        self,
+        segment_set_id: str,
+        strategy: str,
+        splitter_params: dict[str, Any] | None,
+        params: dict[str, Any] | None = None,
+    ) -> SegmentSetVersion:
+        source_set = await self.get_segment_set(segment_set_id)
+        source_items = await self.list_items(segment_set_id)
+        if not source_items:
+            raise api_error(
+                400,
+                "empty_segment_set",
+                "Segment set has no items",
+                {"segment_set_version_id": segment_set_id},
+            )
+
+        from rag_lib.core.domain import Segment
+
+        source_segments = [
+            Segment(
+                segment_id=row.item_id,
+                content=row.content,
+                metadata=dict(row.metadata_json or {}),
+                parent_id=row.parent_id,
+                level=row.level,
+                path=list(row.path_json or []),
+                type=row.type,
+                original_format=row.original_format,
+            )
+            for row in source_items
+        ]
+
+        split_segments = self._apply_split_strategy(
+            source_segments,
+            split_strategy=strategy,
+            splitter_params=splitter_params,
+        )
+
+        return await self.create_derived_from_segments(
+            project_id=source_set.project_id,
+            document_version_id=source_set.document_version_id,
+            parent_segment_set_version_id=source_set.segment_set_version_id,
+            segments=split_segments,
+            params={
+                "split_strategy": strategy,
+                "splitter_params": splitter_params or {},
+                "params": params or {},
+            },
+            input_refs={
+                "parent_segment_set_version_id": source_set.segment_set_version_id,
+                "operation": "split",
+            },
+        )
+
     async def _load_segments(self, document: Document, loader_type: str, loader_params: dict, source_text: str | None) -> list:
         if source_text:
             from rag_lib.core.domain import Segment

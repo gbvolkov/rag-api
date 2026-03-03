@@ -96,39 +96,6 @@ class SegmentItem(Base):
     original_format: Mapped[str] = mapped_column(String(50), default="text")
 
 
-class ChunkSetVersion(Base):
-    __tablename__ = "chunk_set_versions"
-
-    chunk_set_version_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
-    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
-    segment_set_version_id: Mapped[str] = mapped_column(ForeignKey("segment_set_versions.segment_set_version_id", ondelete="CASCADE"), index=True)
-    parent_chunk_set_version_id: Mapped[str | None] = mapped_column(ForeignKey("chunk_set_versions.chunk_set_version_id", ondelete="SET NULL"), index=True)
-    params_json: Mapped[dict] = mapped_column(JSON, default=dict)
-    input_refs_json: Mapped[dict] = mapped_column(JSON, default=dict)
-    artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    producer_type: Mapped[str] = mapped_column(String(100), default="rag_lib")
-    producer_version: Mapped[str] = mapped_column(String(100), default="unknown")
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
-
-
-class ChunkItem(Base):
-    __tablename__ = "chunk_items"
-
-    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
-    chunk_set_version_id: Mapped[str] = mapped_column(ForeignKey("chunk_set_versions.chunk_set_version_id", ondelete="CASCADE"), index=True)
-    item_id: Mapped[str] = mapped_column(String(128), index=True)
-    position: Mapped[int] = mapped_column(Integer, default=0)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
-    parent_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    level: Mapped[int] = mapped_column(Integer, default=0)
-    path_json: Mapped[list] = mapped_column(JSON, default=list)
-    type: Mapped[str] = mapped_column(String(50), default="text")
-    original_format: Mapped[str] = mapped_column(String(50), default="text")
-
-
 class Index(Base):
     __tablename__ = "indexes"
 
@@ -136,7 +103,7 @@ class Index(Base):
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
-    index_type: Mapped[str] = mapped_column(String(50), default="chunk_vectors")
+    index_type: Mapped[str] = mapped_column(String(50), default="segment_vectors")
     config_json: Mapped[dict] = mapped_column(JSON, default=dict)
     params_json: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(50), default="created")
@@ -151,7 +118,15 @@ class IndexBuild(Base):
     build_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
     index_id: Mapped[str] = mapped_column(ForeignKey("indexes.index_id", ondelete="CASCADE"), index=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
-    chunk_set_version_id: Mapped[str] = mapped_column(ForeignKey("chunk_set_versions.chunk_set_version_id", ondelete="CASCADE"), index=True)
+    source_set_id: Mapped[str] = mapped_column(
+        ForeignKey("segment_set_versions.segment_set_version_id", ondelete="CASCADE"),
+        index=True,
+    )
+    parent_set_id: Mapped[str | None] = mapped_column(
+        ForeignKey("segment_set_versions.segment_set_version_id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     params_json: Mapped[dict] = mapped_column(JSON, default=dict)
     input_refs_json: Mapped[dict] = mapped_column(JSON, default=dict)
     artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)

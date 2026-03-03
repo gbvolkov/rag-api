@@ -25,31 +25,31 @@ def _create_segments_from_version(client, version_id: str, loader_type: str = "t
     return resp.json()["segment_set"]["segment_set_version_id"]
 
 
-def _create_chunks(client, segment_set_id: str, strategy: str = "recursive", chunker_params: dict | None = None) -> str:
+def _split_segment_set(client, segment_set_id: str, strategy: str = "recursive", splitter_params: dict | None = None) -> str:
     resp = client.post(
-        f"/api/v1/segment_sets/{segment_set_id}/chunk",
-        json={"strategy": strategy, "chunker_params": chunker_params or {"chunk_size": 80, "chunk_overlap": 0}},
+        f"/api/v1/segment_sets/{segment_set_id}/split",
+        json={"strategy": strategy, "splitter_params": splitter_params or {"chunk_size": 80, "chunk_overlap": 0}},
     )
     assert resp.status_code == 200, resp.text
-    return resp.json()["chunk_set"]["chunk_set_version_id"]
+    return resp.json()["segment_set"]["segment_set_version_id"]
 
 
 def test_example_01_text_workflow_e2e_api_only(client):
     project_id = _create_project(client, "ex01-text-workflow")
     version_id = _upload_document(client, project_id, content=b"banking guarantee and warranty terms. finance rules.")
     segment_set_id = _create_segments_from_version(client, version_id, "text")
-    chunk_set_id = _create_chunks(client, segment_set_id, "recursive", {"chunk_size": 32, "chunk_overlap": 0})
+    source_set_id = _split_segment_set(client, segment_set_id, "recursive", {"chunk_size": 32, "chunk_overlap": 0})
 
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
-        json={"name": "ex01-faiss", "provider": "faiss", "index_type": "chunk_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
+        json={"name": "ex01-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
 
     build = client.post(
         f"/api/v1/indexes/{index_id}/builds",
-        json={"chunk_set_version_id": chunk_set_id, "params": {}, "execution_mode": "sync"},
+        json={"source_set_id": source_set_id, "params": {}, "execution_mode": "sync"},
     )
     assert build.status_code == 200, build.text
     build_id = build.json()["build"]["build_id"]
@@ -70,18 +70,18 @@ def test_example_03_graph_workflow_api_only(client, monkeypatch):
     project_id = _create_project(client, "ex03-graph-workflow")
     version_id = _upload_document(client, project_id, content=b"# Task\nalpha beta\n## Details\ngraph links")
     segment_set_id = _create_segments_from_version(client, version_id, "text")
-    chunk_set_id = _create_chunks(client, segment_set_id, "regex", {"pattern": " "})
+    source_set_id = _split_segment_set(client, segment_set_id, "regex", {"pattern": " "})
 
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
-        json={"name": "ex03-faiss", "provider": "faiss", "index_type": "chunk_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
+        json={"name": "ex03-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
 
     idx_build = client.post(
         f"/api/v1/indexes/{index_id}/builds",
-        json={"chunk_set_version_id": chunk_set_id, "params": {}, "execution_mode": "sync"},
+        json={"source_set_id": source_set_id, "params": {}, "execution_mode": "sync"},
     )
     assert idx_build.status_code == 200, idx_build.text
     index_build_id = idx_build.json()["build"]["build_id"]
@@ -106,8 +106,8 @@ def test_example_03_graph_workflow_api_only(client, monkeypatch):
         f"/api/v1/projects/{project_id}/retrieve",
         json={
             "query": "alpha",
-            "target": "graph_build",
-            "target_id": graph_build_id,
+            "target": "segment_set",
+            "target_id": source_set_id,
             "strategy": {
                 "type": "graph",
                 "graph_build_id": graph_build_id,
@@ -160,11 +160,12 @@ def test_example_13_dual_storage_api_only(client):
     project_id = _create_project(client, "ex13-dual-storage")
     version_id = _upload_document(client, project_id, content=b"dual storage alpha beta")
     segment_set_id = _create_segments_from_version(client, version_id, "text")
-    chunk_set_id = _create_chunks(client, segment_set_id, "regex", {"pattern": " "})
+    parent_set_id = _split_segment_set(client, segment_set_id, "regex", {"pattern": " "})
+    source_set_id = _split_segment_set(client, parent_set_id, "recursive", {"chunk_size": 24, "chunk_overlap": 0})
 
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
-        json={"name": "ex13-faiss", "provider": "faiss", "index_type": "chunk_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
+        json={"name": "ex13-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
@@ -172,10 +173,12 @@ def test_example_13_dual_storage_api_only(client):
     build = client.post(
         f"/api/v1/indexes/{index_id}/builds",
         json={
-            "chunk_set_version_id": chunk_set_id,
+            "source_set_id": source_set_id,
+            "parent_set_id": parent_set_id,
+            "id_key": "source_segment_item_id",
             "params": {},
             "execution_mode": "sync",
-            "doc_store": {"source": "auto", "id_key": "parent_id"},
+            "doc_store": {"backend": "local_file"},
         },
     )
     assert build.status_code == 200, build.text
@@ -187,7 +190,7 @@ def test_example_13_dual_storage_api_only(client):
             "query": "alpha",
             "target": "index_build",
             "target_id": build_id,
-            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "parent_id"},
+            "strategy": {"type": "dual_storage", "vector_search": {"k": 5}, "id_key": "source_segment_item_id"},
         },
     )
     assert ret.status_code == 200, ret.text

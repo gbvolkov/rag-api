@@ -33,15 +33,15 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Create chunks (recursive)")
-        chunk = api.create_chunks(
+        chunk = api.split_segment_set(
             artifacts["segment_set_version_id"],
             strategy="recursive",
-            chunker_params={"chunk_size": 1000, "chunk_overlap": 100},
+            splitter_params={"chunk_size": 1000, "chunk_overlap": 100},
         )
-        artifacts["chunk_set_version_id"] = chunk["chunk_set"]["chunk_set_version_id"]
+        artifacts["source_set_id"] = chunk["segment_set"]["segment_set_version_id"]
         print_kv(
             "Chunks created",
-            {"chunk_set_version_id": artifacts["chunk_set_version_id"], "items": len(chunk["items"])},
+            {"source_set_id": artifacts["source_set_id"], "items": len(chunk["items"])},
         )
         section += 1
 

@@ -67,7 +67,7 @@ def run_pipeline(
                 "document_id": result["document"].document_id,
                 "document_version_id": result["document_version"].version_id,
                 "segment_set_version_id": result["segment_set"].segment_set_version_id,
-                "chunk_set_version_id": result["chunk_set"].chunk_set_version_id,
+                "source_set_id": result["source_set"].segment_set_version_id,
                 "index_build_id": result["index_build"].build_id if result["index_build"] else None,
             }
             await _update_job(job_id, "succeeded", result=payload)

@@ -1,5 +1,4 @@
 from app.schemas.artifact import ArtifactOut
-from app.schemas.chunk import ChunkFromSegmentRequest, ChunkItemOut, ChunkSetOut, ChunkSetWithItems, ClonePatchChunkRequest
 from app.schemas.common import CursorPage, DeleteResponse, RestoreResponse, SoftDeleteRequest
 from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.schemas.graph import CreateGraphBuildRequest, GraphBuildOut
@@ -20,6 +19,7 @@ from app.schemas.segment import (
     CreateSegmentsRequest,
     EnrichSegmentsRequest,
     RaptorSegmentsRequest,
+    SplitSegmentsRequest,
     SegmentItemOut,
     SegmentSetOut,
     SegmentSetWithItems,
@@ -28,11 +28,6 @@ from app.schemas.table import TableSummarizeRequest, TableSummarizeResponse
 
 __all__ = [
     "ArtifactOut",
-    "ChunkFromSegmentRequest",
-    "ChunkItemOut",
-    "ChunkSetOut",
-    "ChunkSetWithItems",
-    "ClonePatchChunkRequest",
     "CursorPage",
     "DeleteResponse",
     "RestoreResponse",
@@ -60,6 +55,7 @@ __all__ = [
     "RetrievalRunOut",
     "CreateSegmentsRequest",
     "ClonePatchSegmentRequest",
+    "SplitSegmentsRequest",
     "EnrichSegmentsRequest",
     "RaptorSegmentsRequest",
     "SegmentItemOut",

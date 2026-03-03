@@ -29,20 +29,12 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Create segments (pymupdf markdown)")
-        try:
-            seg = api.create_segments(
-                artifacts["document_version_id"],
-                loader_type="pymupdf",
-                loader_params={"output_format": "markdown"},
-            )
-            artifacts["used_loader"] = "pymupdf"
-        except Exception:
-            seg = api.create_segments(
-                artifacts["document_version_id"],
-                loader_type="pdf",
-                loader_params={"parse_mode": "text"},
-            )
-            artifacts["used_loader"] = "pdf"
+        seg = api.create_segments(
+            artifacts["document_version_id"],
+            loader_type="pymupdf",
+            loader_params={"output_format": "markdown"},
+        )
+        artifacts["used_loader"] = "pymupdf"
         artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
         print_kv(
             "Segments created",
@@ -51,10 +43,10 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Create structured chunks (regex_hierarchy)")
-        structured = api.create_chunks(
+        structured = api.split_segment_set(
             artifacts["segment_set_version_id"],
             strategy="regex_hierarchy",
-            chunker_params={
+            splitter_params={
                 "patterns": [
                     [1, r"^\s*#\s+(.+)$"],
                     [2, r"^\s*##\s+(.+)$"],
@@ -65,28 +57,28 @@ def run_example(client=None):
                 "include_parent_content": False,
             },
         )
-        artifacts["structured_chunk_set_version_id"] = structured["chunk_set"]["chunk_set_version_id"]
+        artifacts["structured_source_set_id"] = structured["segment_set"]["segment_set_version_id"]
         print_kv(
             "Structured chunks created",
-            {"chunk_set_version_id": artifacts["structured_chunk_set_version_id"], "items": len(structured["items"])},
+            {"source_set_id": artifacts["structured_source_set_id"], "items": len(structured["items"])},
         )
         section += 1
 
         print_section(section, "Create semantic chunks")
-        chunk = api.create_chunks_from_chunk_set(
-            artifacts["structured_chunk_set_version_id"],
+        chunk = api.split_segment_set(
+            artifacts["structured_source_set_id"],
             strategy="semantic",
-            chunker_params={
+            splitter_params={
                 "embedding_provider": "openai",
                 "threshold_type": "fixed",
                 "threshold": 0.8,
                 "window_size": 4,
             },
         )
-        artifacts["chunk_set_version_id"] = chunk["chunk_set"]["chunk_set_version_id"]
+        artifacts["source_set_id"] = chunk["segment_set"]["segment_set_version_id"]
         print_kv(
             "Chunks created",
-            {"chunk_set_version_id": artifacts["chunk_set_version_id"], "items": len(chunk["items"])},
+            {"source_set_id": artifacts["source_set_id"], "items": len(chunk["items"])},
         )
         section += 1
 
@@ -98,7 +90,7 @@ def run_example(client=None):
             config={"embedding_provider": "openai", "collection_name": "03_pdf_semantic"},
         )
         artifacts["index_id"] = idx["index_id"]
-        build = api.create_index_build(artifacts["index_id"], artifacts["chunk_set_version_id"], execution_mode="sync")
+        build = api.create_index_build(artifacts["index_id"], artifacts["source_set_id"], execution_mode="sync")
         artifacts["index_build_id"] = build["build"]["build_id"]
         print_kv(
             "Index build completed",

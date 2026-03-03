@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.capabilities import require_feature
 from app.core.config import settings
 from app.core.errors import api_error
-from app.models import ChunkItem, ChunkSetVersion, GraphBuild, GraphQueryRun, Index, IndexBuild, SegmentItem, SegmentSetVersion
+from app.models import GraphBuild, GraphQueryRun, Index, IndexBuild, SegmentItem, SegmentSetVersion
 from app.services.vector_store_adapter import create_vector_store_for_retrieval
 from app.storage.keys import uri_to_key
 from app.storage.object_store import object_store
@@ -385,38 +385,23 @@ class GraphService:
         return store
 
     async def _validate_source(self, project_id: str, source_type: str, source_id: str) -> None:
-        if source_type == "segment_set":
-            row = await self.session.get(SegmentSetVersion, source_id)
-            if not row or row.is_deleted or row.project_id != project_id:
-                raise api_error(404, "segment_set_not_found", "Segment set not found", {"segment_set_version_id": source_id})
-            return
-        if source_type == "chunk_set":
-            row = await self.session.get(ChunkSetVersion, source_id)
-            if not row or row.is_deleted or row.project_id != project_id:
-                raise api_error(404, "chunk_set_not_found", "Chunk set not found", {"chunk_set_version_id": source_id})
-            return
-        raise api_error(400, "invalid_source_type", "source_type must be segment_set or chunk_set", {"source_type": source_type})
+        if source_type != "segment_set":
+            raise api_error(400, "invalid_source_type", "source_type must be segment_set", {"source_type": source_type})
+        row = await self.session.get(SegmentSetVersion, source_id)
+        if not row or row.is_deleted or row.project_id != project_id:
+            raise api_error(404, "segment_set_not_found", "Segment set not found", {"segment_set_version_id": source_id})
 
     async def _load_source_segments(self, project_id: str, source_type: str, source_id: str) -> list:
         await self._validate_source(project_id, source_type, source_id)
         from rag_lib.core.domain import Segment, SegmentType
 
-        if source_type == "segment_set":
-            stmt = (
-                select(SegmentItem)
-                .where(SegmentItem.segment_set_version_id == source_id)
-                .order_by(SegmentItem.position.asc())
-            )
-            result = await self.session.execute(stmt)
-            rows = list(result.scalars().all())
-        else:
-            stmt = (
-                select(ChunkItem)
-                .where(ChunkItem.chunk_set_version_id == source_id)
-                .order_by(ChunkItem.position.asc())
-            )
-            result = await self.session.execute(stmt)
-            rows = list(result.scalars().all())
+        stmt = (
+            select(SegmentItem)
+            .where(SegmentItem.segment_set_version_id == source_id)
+            .order_by(SegmentItem.position.asc())
+        )
+        result = await self.session.execute(stmt)
+        rows = list(result.scalars().all())
 
         segments = []
         for row in rows:
@@ -426,7 +411,7 @@ class GraphService:
                 raise api_error(
                     500,
                     "invalid_segment_type",
-                    "Persisted segment/chunk item type is invalid",
+                    "Persisted segment item type is invalid",
                     {"item_id": row.item_id, "type": row.type, "allowed": [e.value for e in SegmentType]},
                 ) from exc
             segments.append(

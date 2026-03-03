@@ -4,7 +4,8 @@ from app.schemas.retrieval import RetrieveRequest
 def test_graph_strategy_schema_parses():
     payload = {
         "query": "alpha",
-        "target": "graph_build",
+        "target": "segment_set",
+        "target_id": "s1",
         "strategy": {"type": "graph", "graph_build_id": "g1", "mode": "local", "max_hops": 2},
     }
     parsed = RetrieveRequest(**payload)

@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from langchain_core.documents import Document as LCDocument
 from langchain_core.retrievers import BaseRetriever
+from langchain_core.stores import BaseStore
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.errors import api_error
 from app.core.pagination import encode_cursor, paginate
-from app.models import ChunkItem, ChunkSetVersion, Index, IndexBuild, RetrievalRun, SegmentItem, SegmentSetVersion
+from app.models import Index, IndexBuild, RetrievalRun, SegmentItem
 from app.schemas.retrieval import RetrieveRequest, RetrieveResponse, RetrievedDocument
 from app.services.vector_store_adapter import create_vector_store_for_retrieval
 from app.storage.keys import uri_to_key
@@ -105,22 +107,16 @@ class RetrievalService:
             run_id=run_id,
         )
 
-    async def _load_unindexed_docs(self, project_id: str, target: str, target_id: str | None) -> list[LCDocument]:
-        if target in {"chunk_set", "index_build"}:
-            if target == "chunk_set":
-                chunk_set_id = target_id or await self._latest_active_chunk_set(project_id)
-            else:
-                if not target_id:
-                    raise api_error(400, "missing_target_id", "target_id is required for target=index_build")
-                build = await self.session.get(IndexBuild, target_id)
-                if not build or build.project_id != project_id or build.is_deleted:
-                    raise api_error(404, "index_build_not_found", "Index build not found", {"build_id": target_id})
-                chunk_set_id = build.chunk_set_version_id
+    async def _load_unindexed_docs(self, project_id: str, target: str, target_id: str) -> list[LCDocument]:
+        if target == "index_build":
+            build = await self.session.get(IndexBuild, target_id)
+            if not build or build.project_id != project_id or build.is_deleted:
+                raise api_error(404, "index_build_not_found", "Index build not found", {"build_id": target_id})
 
             stmt = (
-                select(ChunkItem)
-                .where(ChunkItem.chunk_set_version_id == chunk_set_id)
-                .order_by(ChunkItem.position.asc())
+                select(SegmentItem)
+                .where(SegmentItem.segment_set_version_id == build.source_set_id)
+                .order_by(SegmentItem.position.asc())
             )
             res = await self.session.execute(stmt)
             rows = res.scalars().all()
@@ -130,7 +126,7 @@ class RetrievalService:
                     metadata={
                         "item_id": r.item_id,
                         "position": r.position,
-                        "chunk_set_version_id": r.chunk_set_version_id,
+                        "segment_set_version_id": r.segment_set_version_id,
                         **(r.metadata_json or {}),
                     },
                 )
@@ -138,7 +134,7 @@ class RetrievalService:
             ]
 
         if target == "segment_set":
-            seg_set_id = target_id or await self._latest_active_segment_set(project_id)
+            seg_set_id = target_id
             stmt = (
                 select(SegmentItem)
                 .where(SegmentItem.segment_set_version_id == seg_set_id)
@@ -159,7 +155,7 @@ class RetrievalService:
                 for r in rows
             ]
 
-        raise api_error(400, "unsupported_target", "Unindexed retrieval target must be chunk_set, segment_set, or index_build", {"target": target})
+        raise api_error(400, "unsupported_target", "Unindexed retrieval target must be segment_set or index_build", {"target": target})
 
     async def _run_vector(self, project_id: str, request: RetrieveRequest) -> list[LCDocument]:
         _, index_row = await self._resolve_index_build(project_id, request.target, request.target_id)
@@ -172,11 +168,9 @@ class RetrievalService:
         )
         return list(retriever.invoke(request.query))
 
-    async def _resolve_index_build(self, project_id: str, target: str, target_id: str | None) -> tuple[IndexBuild, Index]:
+    async def _resolve_index_build(self, project_id: str, target: str, target_id: str) -> tuple[IndexBuild, Index]:
         if target != "index_build":
             raise api_error(400, "invalid_target", "Vector-backed strategy requires target=index_build", {"target": target})
-        if not target_id:
-            raise api_error(400, "missing_target_id", "target_id is required for target=index_build")
 
         build = await self.session.get(IndexBuild, target_id)
         if not build or build.project_id != project_id or build.is_deleted:
@@ -391,8 +385,8 @@ class RetrievalService:
         return list(reranked.invoke(request.query))
 
     async def _run_dual_storage(self, project_id: str, request: RetrieveRequest, docs: list[LCDocument]) -> list[LCDocument]:
-        if request.target != "index_build" or not request.target_id:
-            raise api_error(400, "invalid_target", "dual_storage requires target=index_build and target_id")
+        if request.target != "index_build":
+            raise api_error(400, "invalid_target", "dual_storage requires target=index_build")
 
         build = await self.session.get(IndexBuild, request.target_id)
         if not build or build.project_id != project_id or build.is_deleted:
@@ -410,8 +404,7 @@ class RetrievalService:
             raise api_error(404, "index_not_found", "Index not found", {"index_id": build.index_id})
 
         id_key = request.strategy.id_key
-        parent_docs_by_id = self._load_dual_storage_doc_store(build, id_key)
-        from langchain_core.stores import InMemoryStore
+        doc_store = self._load_dual_storage_doc_store(build, id_key)
         from rag_lib.retrieval.composition import create_scored_dual_storage_retriever
         from rag_lib.retrieval.scored_retriever import HydrationMode, SearchType
 
@@ -419,9 +412,6 @@ class RetrievalService:
         search_kwargs.update(request.strategy.vector_search or {})
         if "k" not in search_kwargs:
             search_kwargs["k"] = 10
-
-        doc_store = InMemoryStore()
-        doc_store.mset([(item_id, parent_doc) for item_id, parent_doc in parent_docs_by_id.items()])
 
         vector_store = self._load_materialized_vector_store(index_row)
         retriever = create_scored_dual_storage_retriever(
@@ -458,7 +448,7 @@ class RetrievalService:
             raise api_error(500, "invalid_index_manifest", "Index build manifest must be a JSON object", {"build_id": build.build_id})
         return payload
 
-    def _load_dual_storage_doc_store(self, build: IndexBuild, id_key: str) -> dict[str, LCDocument]:
+    def _load_dual_storage_doc_store(self, build: IndexBuild, id_key: str) -> BaseStore[str, LCDocument]:
         manifest = self._load_index_build_manifest(build)
         doc_store_meta = manifest.get("doc_store")
         if not isinstance(doc_store_meta, dict):
@@ -478,6 +468,23 @@ class RetrievalService:
                 {"requested_id_key": id_key, "configured_id_key": configured_id_key},
             )
 
+        backend_raw = doc_store_meta.get("backend")
+        if not isinstance(backend_raw, str) or not backend_raw.strip():
+            raise api_error(
+                500,
+                "invalid_doc_store_backend",
+                "doc_store backend is missing in index build manifest",
+                {"build_id": build.build_id},
+            )
+        backend = backend_raw.strip().lower()
+        if backend not in {"local_file", "redis"}:
+            raise api_error(
+                500,
+                "invalid_doc_store_backend",
+                "doc_store backend is invalid in index build manifest",
+                {"build_id": build.build_id, "backend": backend_raw},
+            )
+
         artifact_uri = doc_store_meta.get("artifact_uri")
         if not isinstance(artifact_uri, str) or not artifact_uri:
             raise api_error(
@@ -487,56 +494,53 @@ class RetrievalService:
                 {"build_id": build.build_id},
             )
 
-        key = uri_to_key(artifact_uri)
-        try:
-            payload = object_store.get_json(key)
-        except Exception as exc:
+        if backend == "local_file":
+            store_root = Path(artifact_uri)
+            if not store_root.exists():
+                raise api_error(
+                    500,
+                    "missing_doc_store_artifact",
+                    "doc_store artifact could not be loaded",
+                    {"build_id": build.build_id, "artifact_uri": artifact_uri},
+                )
+
+            from langchain_classic.storage import LocalFileStore, create_kv_docstore
+
+            byte_store = LocalFileStore(store_root)
+            return create_kv_docstore(byte_store)
+
+        redis_namespace_raw = doc_store_meta.get("redis_namespace")
+        if not isinstance(redis_namespace_raw, str) or not redis_namespace_raw.strip():
             raise api_error(
                 500,
                 "missing_doc_store_artifact",
-                "doc_store artifact could not be loaded",
-                {"build_id": build.build_id, "artifact_uri": artifact_uri},
-            ) from exc
+                "doc_store redis_namespace is missing from index build manifest",
+                {"build_id": build.build_id},
+            )
+        redis_namespace = redis_namespace_raw.strip()
 
-        if not isinstance(payload, dict):
-            raise api_error(500, "invalid_doc_store_artifact", "doc_store artifact must be a JSON object", {"build_id": build.build_id})
-
-        items = payload.get("items")
-        if not isinstance(items, list):
+        redis_ttl_raw = doc_store_meta.get("redis_ttl")
+        try:
+            redis_ttl = int(redis_ttl_raw)
+        except (TypeError, ValueError) as exc:
             raise api_error(
                 500,
                 "invalid_doc_store_artifact",
-                "doc_store artifact must contain a list under items",
-                {"build_id": build.build_id},
+                "doc_store redis_ttl is invalid in index build manifest",
+                {"build_id": build.build_id, "redis_ttl": redis_ttl_raw},
+            ) from exc
+        if redis_ttl <= 0:
+            raise api_error(
+                500,
+                "invalid_doc_store_artifact",
+                "doc_store redis_ttl is invalid in index build manifest",
+                {"build_id": build.build_id, "redis_ttl": redis_ttl_raw},
             )
 
-        parent_docs_by_id: dict[str, LCDocument] = {}
-        for item in items:
-            if not isinstance(item, dict):
-                raise api_error(
-                    500,
-                    "invalid_doc_store_artifact",
-                    "doc_store item must be a JSON object",
-                    {"build_id": build.build_id},
-                )
-            parent_id = item.get("id")
-            if parent_id is None:
-                raise api_error(
-                    500,
-                    "invalid_doc_store_artifact",
-                    "doc_store item must contain id",
-                    {"build_id": build.build_id},
-                )
-            parent_id_str = str(parent_id)
-            metadata = item.get("metadata")
-            safe_metadata = dict(metadata) if isinstance(metadata, dict) else {}
-            safe_metadata[id_key] = parent_id_str
-            safe_metadata.setdefault("item_id", parent_id_str)
-            parent_docs_by_id[parent_id_str] = LCDocument(
-                page_content=str(item.get("page_content", "")),
-                metadata=safe_metadata,
-            )
-        return parent_docs_by_id
+        from langchain_classic.storage import RedisStore, create_kv_docstore
+
+        byte_store = RedisStore(redis_url=artifact_uri, namespace=redis_namespace, ttl=redis_ttl)
+        return create_kv_docstore(byte_store)
 
     async def _run_graph(self, project_id: str, request: RetrieveRequest) -> list[LCDocument]:
         from app.services.graph_service import GraphService
@@ -568,10 +572,8 @@ class RetrievalService:
         graph_docs = await self._run_graph(project_id, request)
         vector_spec = request.strategy.vector or {}
 
-        # Keep graph_hybrid vector side optional: if no index_build target is supplied,
-        # return graph results only.
-        if request.target != "index_build" or not request.target_id:
-            return graph_docs
+        if request.target != "index_build":
+            raise api_error(400, "invalid_target", "graph_hybrid requires target=index_build", {"target": request.target})
 
         from rag_lib.retrieval.composition import create_graph_hybrid_retriever
 
@@ -590,38 +592,6 @@ class RetrievalService:
             weights=request.strategy.weights or [0.7, 0.3],
         )
         return list(hybrid.invoke(request.query))
-
-    async def _latest_active_chunk_set(self, project_id: str) -> str:
-        stmt = (
-            select(ChunkSetVersion)
-            .where(
-                ChunkSetVersion.project_id == project_id,
-                ChunkSetVersion.is_active.is_(True),
-                ChunkSetVersion.is_deleted.is_(False),
-            )
-            .order_by(ChunkSetVersion.created_at.desc())
-        )
-        res = await self.session.execute(stmt)
-        row = res.scalars().first()
-        if not row:
-            raise api_error(404, "chunk_set_not_found", "No active chunk set found for project", {"project_id": project_id})
-        return row.chunk_set_version_id
-
-    async def _latest_active_segment_set(self, project_id: str) -> str:
-        stmt = (
-            select(SegmentSetVersion)
-            .where(
-                SegmentSetVersion.project_id == project_id,
-                SegmentSetVersion.is_active.is_(True),
-                SegmentSetVersion.is_deleted.is_(False),
-            )
-            .order_by(SegmentSetVersion.created_at.desc())
-        )
-        res = await self.session.execute(stmt)
-        row = res.scalars().first()
-        if not row:
-            raise api_error(404, "segment_set_not_found", "No active segment set found for project", {"project_id": project_id})
-        return row.segment_set_version_id
 
     async def list_runs(self, project_id: str) -> list[RetrievalRun]:
         stmt = (

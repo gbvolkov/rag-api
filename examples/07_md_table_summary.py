@@ -33,10 +33,10 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Create chunks (markdown_table)")
-        chunk = api.create_chunks(
+        chunk = api.split_segment_set(
             artifacts["segment_set_version_id"],
             strategy="markdown_table",
-            chunker_params={
+            splitter_params={
                 "split_table_rows": True,
                 "max_rows_per_chunk": 1,
                 "table_summarizer": {
@@ -50,10 +50,10 @@ def run_example(client=None):
                 "inject_summaries_into_content": True,
             },
         )
-        artifacts["chunk_set_version_id"] = chunk["chunk_set"]["chunk_set_version_id"]
+        artifacts["source_set_id"] = chunk["segment_set"]["segment_set_version_id"]
         print_kv(
             "Chunks created",
-            {"chunk_set_version_id": artifacts["chunk_set_version_id"], "items": len(chunk["items"])},
+            {"source_set_id": artifacts["source_set_id"], "items": len(chunk["items"])},
         )
         section += 1
 
@@ -65,7 +65,7 @@ def run_example(client=None):
             config={"embedding_provider": "openai", "embedding_model_name": "text-embedding-3-small"},
         )
         artifacts["index_id"] = idx["index_id"]
-        build = api.create_index_build(artifacts["index_id"], artifacts["chunk_set_version_id"], execution_mode="sync")
+        build = api.create_index_build(artifacts["index_id"], artifacts["source_set_id"], execution_mode="sync")
         artifacts["index_build_id"] = build["build"]["build_id"]
         print_kv(
             "Index build completed",

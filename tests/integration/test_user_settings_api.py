@@ -13,7 +13,7 @@ def test_user_settings_resolution_with_project_override(client):
 
     global_settings = client.put(
         f"/api/v1/users/{user_id}/settings",
-        json={"settings": {"retrieval_top_k": 5, "chunk_strategy": "recursive"}},
+        json={"settings": {"retrieval_top_k": 5, "split_strategy": "recursive"}},
     )
     assert global_settings.status_code == 200, global_settings.text
 
@@ -24,5 +24,4 @@ def test_user_settings_resolution_with_project_override(client):
     assert project_settings.status_code == 200, project_settings.text
     resolved = project_settings.json()["resolved_settings"]
     assert resolved["retrieval_top_k"] == 10
-    assert resolved["chunk_strategy"] == "recursive"
-
+    assert resolved["split_strategy"] == "recursive"
