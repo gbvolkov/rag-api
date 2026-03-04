@@ -1,20 +1,17 @@
-import os
-import tempfile
 import uuid
 from typing import Any, Callable
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.capabilities import require_feature, require_module
+from app.core.capabilities import require_feature
 from app.core.config import settings
 from app.core.errors import api_error
-from app.models import Document, DocumentVersion, SegmentItem, SegmentSetVersion
-from app.storage.keys import uri_to_key
+from app.models import DocumentItem, DocumentSetVersion, SegmentItem, SegmentSetVersion
 from app.storage.object_store import object_store
 
 
-def _segment_to_row(seg: object, position: int) -> dict:
+def _segment_to_row(seg: object, position: int) -> dict[str, Any]:
     item_id = getattr(seg, "segment_id", None) or str(uuid.uuid4())
     metadata = getattr(seg, "metadata", {}) or {}
     path = getattr(seg, "path", []) or []
@@ -36,39 +33,60 @@ class SegmentService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_from_document_version(
+    async def create_from_document_set(
         self,
-        version_id: str,
-        loader_type: str,
-        loader_params: dict,
-        split_strategy: str | None = None,
-        splitter_params: dict[str, Any] | None = None,
-        source_text: str | None = None,
+        *,
+        document_set_id: str,
+        split_strategy: str,
+        splitter_params: dict[str, Any] | None,
+        params: dict[str, Any] | None = None,
     ) -> SegmentSetVersion:
-        doc_version = await self.session.get(DocumentVersion, version_id)
-        if not doc_version or doc_version.is_deleted:
-            raise api_error(404, "document_version_not_found", "Document version not found", {"version_id": version_id})
+        document_set = await self.get_document_set(document_set_id)
+        document_items = await self.list_document_items(document_set_id)
+        if not document_items:
+            raise api_error(
+                400,
+                "empty_document_set",
+                "Document set has no items",
+                {"document_set_version_id": document_set_id},
+            )
 
-        document = await self.session.get(Document, doc_version.document_id)
-        if not document or document.is_deleted:
-            raise api_error(404, "document_not_found", "Document not found", {"document_id": doc_version.document_id})
+        from rag_lib.core.domain import Segment
 
-        loaded_segments = await self._load_segments(document, loader_type, loader_params, source_text)
-        segments = self._apply_split_strategy(loaded_segments, split_strategy=split_strategy, splitter_params=splitter_params)
+        source_segments = [
+            Segment(
+                segment_id=row.item_id,
+                content=row.content,
+                metadata=dict(row.metadata_json or {}),
+                parent_id=None,
+                level=0,
+                path=[],
+                type="text",
+                original_format=row.original_format,
+            )
+            for row in document_items
+        ]
+
+        split_segments = self._apply_split_strategy(
+            source_segments,
+            split_strategy=split_strategy,
+            splitter_params=splitter_params,
+        )
 
         return await self.create_derived_from_segments(
-            project_id=document.project_id,
-            document_version_id=version_id,
+            project_id=document_set.project_id,
+            document_version_id=document_set.document_version_id,
             parent_segment_set_version_id=None,
-            segments=segments,
+            segments=split_segments,
             params={
-                "loader_type": loader_type,
-                "loader_params": loader_params,
                 "split_strategy": split_strategy,
                 "splitter_params": splitter_params or {},
-                "source_text": bool(source_text),
+                "params": params or {},
             },
-            input_refs={"document_version_id": version_id},
+            input_refs={
+                "document_set_version_id": document_set.document_set_version_id,
+                "operation": "create_from_document_set",
+            },
         )
 
     async def create_derived_from_segments(
@@ -102,7 +120,7 @@ class SegmentService:
         await self.session.flush()
 
         rows: list[SegmentItem] = []
-        snapshot: list[dict] = []
+        snapshot: list[dict[str, Any]] = []
         for i, seg in enumerate(segments):
             mapped = _segment_to_row(seg, i)
             row = SegmentItem(segment_set_version_id=segment_set.segment_set_version_id, **mapped)
@@ -127,9 +145,7 @@ class SegmentService:
         artifact_uri = object_store.put_json(key, snapshot)
         segment_set.artifact_uri = artifact_uri
 
-        mirror_key = (
-            f"projects/{project_id}/metadata_mirror/segment_set/{segment_set.segment_set_version_id}.json"
-        )
+        mirror_key = f"projects/{project_id}/metadata_mirror/segment_set/{segment_set.segment_set_version_id}.json"
         object_store.put_json(
             mirror_key,
             {
@@ -145,103 +161,6 @@ class SegmentService:
         await self.session.commit()
         await self.session.refresh(segment_set)
         return segment_set
-
-    async def create_from_url(
-        self,
-        project_id: str,
-        loader_type: str,
-        loader_params: dict,
-        split_strategy: str | None = None,
-        splitter_params: dict[str, Any] | None = None,
-    ) -> SegmentSetVersion:
-        loader_type = loader_type.lower()
-        if loader_type not in {"web", "web_async"}:
-            raise api_error(400, "unsupported_loader", "URL ingestion supports only web|web_async", {"loader_type": loader_type})
-        url = loader_params.get("url")
-        if not url:
-            raise api_error(400, "invalid_loader_params", "loader_params.url is required for web loaders")
-
-        cleanup_config = self._build_web_cleanup_config(loader_params.get("cleanup_config"))
-        playwright_navigation_config = self._build_playwright_navigation_config(loader_params.get("playwright_navigation_config"))
-        playwright_extraction_config = self._build_playwright_extraction_config(loader_params.get("playwright_extraction_config"))
-
-        if loader_type == "web":
-            from rag_lib.loaders.web import WebLoader
-
-            loader = WebLoader(
-                url=url,
-                depth=int(loader_params.get("depth", 0)),
-                output_format=loader_params.get("output_format", "markdown"),
-                fetch_mode=loader_params.get("fetch_mode", "requests"),
-                crawl_scope=loader_params.get("crawl_scope", "same_host"),
-                allowed_domains=loader_params.get("allowed_domains"),
-                follow_download_links=bool(loader_params.get("follow_download_links", False)),
-                request_timeout_seconds=float(loader_params.get("request_timeout_seconds", 20.0)),
-                playwright_timeout_ms=int(loader_params.get("playwright_timeout_ms", 30000)),
-                playwright_headless=bool(loader_params.get("playwright_headless", True)),
-                ignore_https_errors=bool(loader_params.get("ignore_https_errors", False)),
-                user_agent=loader_params.get("user_agent", "rag-lib-webloader/1.0"),
-                max_pages=loader_params.get("max_pages"),
-                retry_attempts=int(loader_params.get("retry_attempts", 1)),
-                continue_on_error=bool(loader_params.get("continue_on_error", True)),
-                login_url=loader_params.get("login_url"),
-                cleanup_config=cleanup_config,
-                playwright_visible=loader_params.get("playwright_visible"),
-                playwright_extraction_config=playwright_extraction_config,
-                playwright_navigation_config=playwright_navigation_config,
-            )
-            documents = loader.load()
-            stats = loader.last_stats
-            errors = loader.last_errors
-        else:
-            from rag_lib.loaders.web_async import AsyncWebLoader
-
-            loader = AsyncWebLoader(
-                url=url,
-                depth=int(loader_params.get("depth", 0)),
-                output_format=loader_params.get("output_format", "markdown"),
-                fetch_mode=loader_params.get("fetch_mode", "requests"),
-                crawl_scope=loader_params.get("crawl_scope", "same_host"),
-                allowed_domains=loader_params.get("allowed_domains"),
-                follow_download_links=bool(loader_params.get("follow_download_links", False)),
-                request_timeout_seconds=float(loader_params.get("request_timeout_seconds", 20.0)),
-                playwright_timeout_ms=int(loader_params.get("playwright_timeout_ms", 30000)),
-                playwright_headless=bool(loader_params.get("playwright_headless", True)),
-                ignore_https_errors=bool(loader_params.get("ignore_https_errors", False)),
-                user_agent=loader_params.get("user_agent", "rag-lib-webloader/1.0"),
-                max_pages=loader_params.get("max_pages"),
-                retry_attempts=int(loader_params.get("retry_attempts", 1)),
-                max_concurrency=int(loader_params.get("max_concurrency", 5)),
-                continue_on_error=bool(loader_params.get("continue_on_error", True)),
-                login_url=loader_params.get("login_url"),
-                cleanup_config=cleanup_config,
-                playwright_visible=loader_params.get("playwright_visible"),
-                playwright_extraction_config=playwright_extraction_config,
-                playwright_navigation_config=playwright_navigation_config,
-            )
-            documents = await loader.load()
-            stats = loader.last_stats
-            errors = loader.last_errors
-
-        from rag_lib.core.domain import Segment
-
-        loaded_segments = [Segment(content=d.page_content, metadata=d.metadata or {}) for d in documents]
-        segments = self._apply_split_strategy(loaded_segments, split_strategy=split_strategy, splitter_params=splitter_params)
-        return await self.create_derived_from_segments(
-            project_id=project_id,
-            document_version_id=None,
-            parent_segment_set_version_id=None,
-            segments=segments,
-            params={
-                "loader_type": loader_type,
-                "loader_params": loader_params,
-                "split_strategy": split_strategy,
-                "splitter_params": splitter_params or {},
-                "web_stats": stats,
-                "web_errors": errors,
-            },
-            input_refs={"url": url},
-        )
 
     async def split_from_segment_set(
         self,
@@ -298,181 +217,6 @@ class SegmentService:
             },
         )
 
-    async def _load_segments(self, document: Document, loader_type: str, loader_params: dict, source_text: str | None) -> list:
-        if source_text:
-            from rag_lib.core.domain import Segment
-
-            return [Segment(content=source_text)]
-
-        key = uri_to_key(document.storage_uri)
-        content = object_store.get_bytes(key)
-
-        suffix = os.path.splitext(document.filename)[1] or ".tmp"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(content)
-            path = tmp.name
-
-        try:
-            loader_type = loader_type.lower()
-            if loader_type == "pdf":
-                from rag_lib.loaders.pdf import PDFLoader
-
-                summarizer = None
-                if loader_params.get("summarize_tables", False):
-                    summarizer = self._build_pdf_summarizer(loader_params.get("table_summarizer", {}))
-                loader = PDFLoader(
-                    file_path=path,
-                    parse_mode=loader_params.get("parse_mode", "text"),
-                    backend=loader_params.get("backend"),
-                    summarizer=summarizer,
-                )
-            elif loader_type == "miner_u":
-                require_feature(
-                    settings.feature_enable_miner_u,
-                    "miner_u",
-                    hint="Set FEATURE_ENABLE_MINER_U=true to enable MinerU loader.",
-                )
-                if "fallback_to_pdf_loader" in loader_params or "fallback_parse_mode" in loader_params:
-                    raise api_error(
-                        400,
-                        "invalid_loader_params",
-                        "miner_u loader does not support fallback_to_pdf_loader/fallback_parse_mode in strict mode",
-                        {"loader_type": "miner_u"},
-                    )
-                require_module("magic_pdf", "miner_u", install_hint="Install optional dependency 'magic-pdf'.")
-                from rag_lib.loaders.miner_u import MinerULoader
-
-                loader = MinerULoader(
-                    file_path=path,
-                    parse_mode=loader_params.get("parse_mode", "auto"),
-                    backend=loader_params.get("backend"),
-                    lang=loader_params.get("lang"),
-                    server_url=loader_params.get("server_url"),
-                    start_page=loader_params.get("start_page"),
-                    end_page=loader_params.get("end_page"),
-                    parse_formula=loader_params.get("parse_formula"),
-                    parse_table=loader_params.get("parse_table"),
-                    device=loader_params.get("device"),
-                    vram=loader_params.get("vram"),
-                    source=loader_params.get("source"),
-                    timeout_seconds=int(loader_params.get("timeout_seconds", 600)),
-                    keep_temp_artifacts=bool(loader_params.get("keep_temp_artifacts", False)),
-                )
-            elif loader_type == "docx":
-                from rag_lib.loaders.docx import DocXLoader
-
-                loader = DocXLoader(file_path=path)
-            elif loader_type == "pymupdf":
-                from rag_lib.loaders.pymupdf import PyMuPDFLoader
-
-                loader = PyMuPDFLoader(file_path=path, output_format=loader_params.get("output_format", "markdown"))
-            elif loader_type == "html":
-                from rag_lib.loaders.html import HTMLLoader
-
-                loader = HTMLLoader(file_path=path, output_format=loader_params.get("output_format", "markdown"))
-            elif loader_type == "csv":
-                from rag_lib.loaders.csv_excel import CSVLoader
-
-                loader = CSVLoader(
-                    file_path=path,
-                    output_format=loader_params.get("output_format", "markdown"),
-                    delimiter=loader_params.get("delimiter"),
-                )
-            elif loader_type == "excel":
-                from rag_lib.loaders.csv_excel import ExcelLoader
-
-                summarizer = None
-                if loader_params.get("summarize_tables", False):
-                    summarizer = self._build_pdf_summarizer(loader_params.get("table_summarizer", {}))
-                loader = ExcelLoader(
-                    file_path=path,
-                    output_format=loader_params.get("output_format", "markdown"),
-                    delimiter=loader_params.get("delimiter", ","),
-                    summarizer=summarizer,
-                )
-            elif loader_type == "json":
-                from rag_lib.loaders.data_loaders import JsonLoader
-
-                loader = JsonLoader(
-                    file_path=path,
-                    output_format=loader_params.get("output_format", "json"),
-                    schema=loader_params.get("schema", "."),
-                    schema_dialect=self._resolve_schema_dialect(
-                        loader_params.get("schema_dialect", "dot_path"),
-                        error_code="invalid_loader_params",
-                    ),
-                    ensure_ascii=bool(loader_params.get("ensure_ascii", False)),
-                )
-            elif loader_type == "text":
-                from rag_lib.loaders.data_loaders import TextLoader
-
-                loader = TextLoader(file_path=path)
-            elif loader_type == "table":
-                from rag_lib.loaders.data_loaders import TableLoader
-
-                loader = TableLoader(file_path=path)
-            elif loader_type == "regex":
-                from rag_lib.loaders.regex import RegexHierarchyLoader
-
-                raw_patterns = loader_params.get("patterns")
-                if not isinstance(raw_patterns, list) or not raw_patterns:
-                    raise api_error(
-                        400,
-                        "invalid_loader_params",
-                        "regex loader requires non-empty patterns list",
-                    )
-
-                normalized_patterns = []
-                for item in raw_patterns:
-                    if isinstance(item, list) and len(item) == 2:
-                        normalized_patterns.append((item[0], item[1]))
-                    else:
-                        normalized_patterns.append(item)
-
-                loader = RegexHierarchyLoader(
-                    file_path=path,
-                    patterns=normalized_patterns,
-                    exclude_patterns=loader_params.get("exclude_patterns"),
-                    include_parent_content=loader_params.get("include_parent_content", False),
-                )
-            elif loader_type in {"web", "web_async"}:
-                raise api_error(
-                    400,
-                    "unsupported_loader",
-                    "web and web_async loaders require direct URL ingestion endpoint",
-                    {"loader_type": loader_type},
-                )
-            else:
-                raise api_error(400, "unsupported_loader", "Unsupported loader type", {"loader_type": loader_type})
-            documents = loader.load()
-            if loader_type == "regex":
-                from rag_lib.chunkers.regex_hierarchy import RegexHierarchySplitter
-
-                splitter = RegexHierarchySplitter(
-                    patterns=normalized_patterns,
-                    exclude_patterns=loader_params.get("exclude_patterns"),
-                    include_parent_content=loader_params.get("include_parent_content", False),
-                )
-                out = []
-                for doc in documents:
-                    out.extend(splitter.create_segments(doc.page_content, metadata=doc.metadata or {}))
-                return out
-
-            from rag_lib.core.domain import Segment
-
-            return [
-                Segment(
-                    content=d.page_content,
-                    metadata=d.metadata or {},
-                )
-                for d in documents
-            ]
-        finally:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-
     def _apply_split_strategy(
         self,
         segments: list[object],
@@ -483,9 +227,12 @@ class SegmentService:
         if not split_strategy:
             return segments
 
+        strategy = split_strategy.lower()
+        if strategy == "identity":
+            return segments
+
         from rag_lib.core.domain import Segment
 
-        strategy = split_strategy.lower()
         params = splitter_params or {}
         splitter = self._build_splitter(strategy, params)
         segment_output_strategies = {"regex_hierarchy", "markdown_hierarchy", "json", "qa", "csv_table", "html"}
@@ -554,7 +301,7 @@ class SegmentService:
             )
         return out
 
-    def _build_splitter(self, strategy: str, params: dict):
+    def _build_splitter(self, strategy: str, params: dict[str, Any]):
         length_function = self._resolve_length_function(params, error_code="invalid_splitter_params")
 
         if strategy == "recursive":
@@ -752,7 +499,12 @@ class SegmentService:
                 400,
                 error_code,
                 "Invalid token_len configuration for length_mode",
-                {"encoding_name": encoding_name, "model_name": model_name, "default_encoding": default_encoding, "error": str(exc)},
+                {
+                    "encoding_name": encoding_name,
+                    "model_name": model_name,
+                    "default_encoding": default_encoding,
+                    "error": str(exc),
+                },
             ) from exc
 
         def _token_len(value: str) -> int:
@@ -774,7 +526,7 @@ class SegmentService:
                 {"schema_dialect": raw_value, "allowed": [SchemaDialect.DOT_PATH.value]},
             ) from exc
 
-    def _build_table_summarizer(self, cfg: dict | None):
+    def _build_table_summarizer(self, cfg: dict[str, Any] | None):
         if not cfg:
             return None
 
@@ -810,99 +562,6 @@ class SegmentService:
             soft_max_chars=cfg.get("soft_max_chars"),
         )
 
-    def _build_pdf_summarizer(self, cfg: dict[str, Any]):
-        kind = str((cfg or {}).get("type", "mock")).lower()
-        if kind == "mock":
-            from rag_lib.summarizers.table import MockTableSummarizer
-
-            return MockTableSummarizer()
-
-        if kind != "llm":
-            raise api_error(400, "invalid_loader_params", "table_summarizer.type must be mock or llm")
-
-        require_feature(
-            settings.feature_enable_llm,
-            "llm",
-            hint="Set FEATURE_ENABLE_LLM=true and configure provider credentials.",
-        )
-        from rag_lib.llm.factory import create_llm
-        from rag_lib.summarizers.table_llm import LLMTableSummarizer
-
-        try:
-            llm = create_llm(
-                provider=cfg.get("llm_provider") or settings.llm_provider_default,
-                model_name=cfg.get("model") or settings.llm_model_default,
-                temperature=settings.llm_temperature_default if cfg.get("temperature") is None else cfg.get("temperature"),
-                streaming=False,
-            )
-        except Exception as exc:
-            raise api_error(424, "missing_dependency", "LLM provider initialization failed", {"error": str(exc)}) from exc
-        return LLMTableSummarizer(
-            llm=llm,
-            prompt_template=cfg.get("prompt_template"),
-            soft_max_chars=cfg.get("soft_max_chars"),
-        )
-
-    def _build_web_cleanup_config(self, cfg: Any):
-        if cfg is None:
-            return None
-        if not isinstance(cfg, dict):
-            return cfg
-        try:
-            from rag_lib.loaders.web_common import WebCleanupConfig
-
-            return WebCleanupConfig(
-                ignored_classes=tuple(cfg.get("ignored_classes", ()) or ()),
-                non_recursive_classes=tuple(cfg.get("non_recursive_classes", ()) or ()),
-                navigation_classes=tuple(cfg.get("navigation_classes", ()) or ()),
-                navigation_styles=tuple(cfg.get("navigation_styles", ()) or ()),
-                navigation_texts=tuple(cfg.get("navigation_texts", ()) or ()),
-                duplicate_tags=tuple(cfg.get("duplicate_tags", ()) or ()),
-            )
-        except Exception as exc:
-            raise api_error(400, "invalid_loader_params", "Invalid cleanup_config payload", {"error": str(exc)}) from exc
-
-    def _build_playwright_navigation_config(self, cfg: Any):
-        if cfg is None:
-            return None
-        if not isinstance(cfg, dict):
-            return cfg
-        try:
-            from rag_lib.loaders.web_playwright_extractors import PlaywrightNavigationConfig
-
-            return PlaywrightNavigationConfig(**cfg)
-        except Exception as exc:
-            raise api_error(
-                400,
-                "invalid_loader_params",
-                "Invalid playwright_navigation_config payload",
-                {"error": str(exc)},
-            ) from exc
-
-    def _build_playwright_extraction_config(self, cfg: Any):
-        if cfg is None:
-            return None
-        if not isinstance(cfg, dict):
-            return cfg
-        try:
-            from rag_lib.loaders.web_playwright_extractors import (
-                PlaywrightExtractionConfig,
-                PlaywrightProfileConfig,
-            )
-
-            payload = dict(cfg)
-            profiles = payload.get("profiles")
-            if isinstance(profiles, list):
-                payload["profiles"] = tuple(PlaywrightProfileConfig(**item) for item in profiles)
-            return PlaywrightExtractionConfig(**payload)
-        except Exception as exc:
-            raise api_error(
-                400,
-                "invalid_loader_params",
-                "Invalid playwright_extraction_config payload",
-                {"error": str(exc)},
-            ) from exc
-
     async def list_segment_sets(self, project_id: str) -> list[SegmentSetVersion]:
         stmt = (
             select(SegmentSetVersion)
@@ -931,6 +590,26 @@ class SegmentService:
         stmt = select(func.count(SegmentItem.id)).where(SegmentItem.segment_set_version_id == segment_set_id)
         result = await self.session.execute(stmt)
         return int(result.scalar_one())
+
+    async def get_document_set(self, document_set_id: str) -> DocumentSetVersion:
+        row = await self.session.get(DocumentSetVersion, document_set_id)
+        if not row or row.is_deleted:
+            raise api_error(
+                404,
+                "document_set_not_found",
+                "Document set not found",
+                {"document_set_version_id": document_set_id},
+            )
+        return row
+
+    async def list_document_items(self, document_set_id: str) -> list[DocumentItem]:
+        stmt = (
+            select(DocumentItem)
+            .where(DocumentItem.document_set_version_id == document_set_id)
+            .order_by(DocumentItem.position.asc())
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def clone_patch_item(self, segment_set_id: str, item_id: str, patch: dict, params: dict) -> SegmentSetVersion:
         original_set = await self.get_segment_set(segment_set_id)
@@ -963,7 +642,7 @@ class SegmentService:
         await self.session.flush()
 
         new_rows: list[SegmentItem] = []
-        snapshot: list[dict] = []
+        snapshot: list[dict[str, Any]] = []
         for i, src in enumerate(items):
             content = patch.get("content", src.content) if src.item_id == item_id else src.content
             metadata = patch.get("metadata", src.metadata_json) if src.item_id == item_id else src.metadata_json

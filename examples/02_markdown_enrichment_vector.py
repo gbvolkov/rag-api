@@ -1,6 +1,8 @@
 from examples.api_client import ApiClientError
 from examples.example_utils import default_client, docs_path, export_results_json, print_api_error, print_kv, print_section, project_name
 
+ENRICH_SEGMENT_LIMIT = 5
+
 
 def run_example(client=None):
     api = client or default_client()
@@ -27,8 +29,17 @@ def run_example(client=None):
         )
         section += 1
 
+        print_section(section, "Load documents (text loader)")
+        loaded = api.load_documents(artifacts["document_version_id"], loader_type="text", loader_params={})
+        artifacts["document_set_version_id"] = loaded["document_set"]["document_set_version_id"]
+        print_kv(
+            "Documents loaded",
+            {"document_set_version_id": artifacts["document_set_version_id"], "items": len(loaded["items"])},
+        )
+        section += 1
+
         print_section(section, "Create segments")
-        seg = api.create_segments(artifacts["document_version_id"], loader_type="text", loader_params={})
+        seg = api.create_segments(artifacts["document_set_version_id"], split_strategy="identity")
         artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
         print_kv(
             "Segments created",
@@ -49,13 +60,17 @@ def run_example(client=None):
         )
         section += 1
 
+        if ENRICH_SEGMENT_LIMIT and len(chunk["items"]) > ENRICH_SEGMENT_LIMIT:
+            artifacts["enrich_segment_limit"] = ENRICH_SEGMENT_LIMIT
+
         print_section(section, "Run enrichment")
         enr = api.run_enrich(
-            artifacts["segment_set_version_id"],
+            artifacts["source_set_id"],
             {"execution_mode": "sync", "llm_provider": "openai", "llm_model": "gpt-4.1-nano"},
         )
-        artifacts["segment_set_version_id"] = enr["segment_set"]["segment_set_version_id"]
-        print_kv("Enrichment completed", {"segment_set_version_id": artifacts["segment_set_version_id"]})
+        artifacts["source_set_id"] = enr["segment_set"]["segment_set_version_id"]
+        artifacts["segment_set_version_id"] = artifacts["source_set_id"]
+        print_kv("Enrichment completed", {"source_set_id": artifacts["source_set_id"]})
         section += 1
 
         print_section(section, "Create index and build")

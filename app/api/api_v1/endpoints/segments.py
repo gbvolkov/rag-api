@@ -7,7 +7,6 @@ from app.core.config import settings
 from app.db.session import get_session
 from app.schemas.segment import (
     ClonePatchSegmentRequest,
-    CreateSegmentsRequest,
     EnrichSegmentsRequest,
     RaptorRunOut,
     RaptorSegmentsRequest,
@@ -22,48 +21,6 @@ from app.services.segment_transform_service import SegmentTransformService
 from app.services.serializers import segment_item_out, segment_set_out
 
 router = APIRouter()
-
-
-@router.post("/document_versions/{version_id}/segments", response_model=SegmentSetWithItems)
-async def create_segments(version_id: str, request: CreateSegmentsRequest, session: AsyncSession = Depends(get_session)):
-    svc = SegmentService(session)
-    segment_set = await svc.create_from_document_version(
-        version_id=version_id,
-        loader_type=request.loader_type,
-        loader_params=request.loader_params,
-        split_strategy=request.split_strategy,
-        splitter_params=request.splitter_params,
-        source_text=request.source_text,
-    )
-    items = await svc.list_items(segment_set.segment_set_version_id)
-    total = len(items)
-    return SegmentSetWithItems(
-        segment_set=segment_set_out(segment_set, total_items=total),
-        items=[segment_item_out(i) for i in items],
-    )
-
-
-@router.post("/projects/{project_id}/segments/url", response_model=SegmentSetWithItems)
-async def create_segments_from_url(
-    project_id: str,
-    request: CreateSegmentsRequest,
-    _project=Depends(require_active_project),
-    session: AsyncSession = Depends(get_session),
-):
-    svc = SegmentService(session)
-    segment_set = await svc.create_from_url(
-        project_id=project_id,
-        loader_type=request.loader_type,
-        loader_params=request.loader_params,
-        split_strategy=request.split_strategy,
-        splitter_params=request.splitter_params,
-    )
-    items = await svc.list_items(segment_set.segment_set_version_id)
-    total = len(items)
-    return SegmentSetWithItems(
-        segment_set=segment_set_out(segment_set, total_items=total),
-        items=[segment_item_out(i) for i in items],
-    )
 
 
 @router.get("/projects/{project_id}/segment_sets")

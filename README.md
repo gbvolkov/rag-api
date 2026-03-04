@@ -2,6 +2,35 @@
 
 Project-scoped document ingestion, segmentation, chunking, indexing, retrieval, and artifact lifecycle service built on top of `rag_lib`.
 
+## Breaking Change: Load Then Split
+
+Ingestion now follows strict `rag_lib` semantics:
+
+1. Load documents with a loader (`Document[]` output).
+2. Create segments from a loaded document set with an independent split strategy (`Segment[]` output).
+
+Canonical endpoints:
+
+- Load from uploaded file:
+  - `POST /api/v1/document_versions/{version_id}/load_documents`
+- Load from URL:
+  - `POST /api/v1/projects/{project_id}/load_documents/url`
+- Inspect loaded document sets:
+  - `GET /api/v1/projects/{project_id}/document_sets`
+  - `GET /api/v1/document_sets/{document_set_version_id}`
+- Create segments from loaded documents:
+  - `POST /api/v1/document_sets/{document_set_version_id}/segments`
+- Re-split an existing segment set:
+  - `POST /api/v1/segment_sets/{segment_set_id}/split`
+
+Removed (strict cutover):
+
+- `POST /api/v1/document_versions/{version_id}/segments`
+- `POST /api/v1/projects/{project_id}/segments/url`
+
+Detailed contract and policy mapping:
+- [docs/rag_lib_load_split_contract.md](docs/rag_lib_load_split_contract.md)
+
 ## Stack
 
 - API: FastAPI (`/api/v1`)
@@ -348,7 +377,7 @@ Behavior notes:
 - Effective preview MIME may be inferred from filename when stored MIME is generic.
 - Returns `404 document_version_not_found` or `404 document_content_not_found` when unresolved.
 
-### POST `/api/v1/document_versions/{version_id}/segments`
+### POST `/api/v1/document_versions/{version_id}/load_documents`
 
 Path params:
 
@@ -356,69 +385,68 @@ Path params:
 |---|---|---|
 | `version_id` | string | yes |
 
-Request body (`CreateSegmentsRequest`):
+Request body (`LoadDocumentsRequest`):
 
-| Field | Type | Required | Default | Constraints / behavior |
+| Field | Type | Required | Default | Notes |
 |---|---|---|---|---|
-| `loader_type` | string | yes | - | Allowed: `pdf`, `miner_u`, `docx`, `csv`, `excel`, `json`, `qa`, `table`, `regex` |
-| `loader_params` | object | no | `{}` | loader-specific parameters, detailed below |
-| `source_text` | string \| null | no | `null` | if present, bypasses file loader and emits one text segment |
+| `loader_type` | string \| null | no | `null` | loader override; if omitted, loader is resolved by MIME/extension policy |
+| `loader_params` | object | no | `{}` | merged on top of loader default params |
 
-`loader_params` by `loader_type`:
+Response `200`: `DocumentSetWithItems`
 
-| loader_type | Parameter | Type | Required | Default | Notes |
-|---|---|---|---|---|---|
-| `pdf` | `backend` | string \| null | no | loader default | Camelot backend passed to PDF loader |
-| `pdf` | `summarize_tables` | boolean | no | `false` | enables table summarization |
-| `pdf` | `table_summarizer` | object | no | `{}` | summary config when `summarize_tables=true` |
-| `pdf.table_summarizer` | `type` | string | no | `mock` | `mock` or `llm` |
-| `pdf.table_summarizer` | `llm_provider` | string \| null | no | settings default | used when `type=llm` |
-| `pdf.table_summarizer` | `model` | string \| null | no | settings default | used when `type=llm` |
-| `pdf.table_summarizer` | `temperature` | number \| null | no | settings default | used when `type=llm` |
-| `miner_u` | `parse_mode`, `backend`, `lang`, `server_url`, `start_page`, `end_page`, `parse_formula`, `parse_table`, `device`, `vram`, `source`, `timeout_seconds`, `keep_temp_artifacts` | mixed | no | loader defaults | strict MinerU contract only; no API-level fallback to PDF |
-| `docx` | `regex_patterns` | array | no | `null` | extra heading detection/splitting rules |
-| `docx` | `exclude_patterns` | string[] | no | `[]` | regex exclusions |
-| `docx` | `include_parent_content` | boolean | no | `true` | parent-content inclusion for docx regex post-splitting |
-| `csv` | `chunk_size` | integer \| null | no | loader default | row grouping/chunking size in CSV loader |
-| `excel` | none | - | - | - | no custom params currently |
-| `json` | `jq_schema` | string | no | `"."` | jq selector used by JSON loader |
-| `qa` | none | - | - | - | no custom params currently |
-| `table` | `mode` | string | no | `row` | `row` or `group` |
-| `table` | `group_by` | string \| null | no | `null` | used with `mode=group` |
-| `regex` | `patterns` | array | yes | - | non-empty hierarchy pattern list |
-| `regex` | `exclude_patterns` | string[] | no | `[]` | line exclusion regexes |
-| `regex` | `include_parent_content` | boolean \| integer | no | `false` | ancestor-content concatenation mode |
+Behavior notes:
 
-`regex`/`docx.regex_patterns` accepted pattern item shapes:
+- Persists one `document_set_version` and all returned `document_items`.
+- File-based load deactivates prior active document sets for the same `document_version_id`.
+- Loader policy controls defaults and allowed overrides.
 
-| Shape | Example | How pattern is used | Expected result example |
-|---|---|---|---|
-| array pair `[level, pattern]` | `[2, "^Subsection\\s+(\\d+\\.\\d+):"]` | compiles one regex rule with fixed hierarchy level `2` | for line `Subsection 1.2: Scope`, created segment has `level=2`, `metadata.title=\"1.2\"`; `path` contains ancestor titles |
-| object with single pattern | `{"level": 1, "pattern": "^Section\\s+(\\d+):"}` | same behavior as array pair, but object form | for line `Section 3: Access`, segment has `level=1`, `metadata.title=\"3\"`, `path=[]` (top-level) |
-| object with pattern list | `{"level": 2, "pattern": ["^Section\\s+(.+)$", "^Clause\\s+(.+)$"]}` | each pattern in list is compiled as a separate rule at same level; first matching rule wins by order | lines `Section Controls` and `Clause Passwords` both create `level=2` segments; `metadata.title` comes from capture group `(.+)` |
-| object with `custom_patterns` alias | `{"level": 2, "custom_patterns": ["^Item\\s+(.+)$"]}` | `custom_patterns` is treated as alias of `pattern` list | line `Item Logging` creates segment with `level=2`, `metadata.title=\"Logging\"` |
+### POST `/api/v1/projects/{project_id}/load_documents/url`
 
-Pattern execution notes:
+Path params:
 
-- `loader_type=regex`: text is processed line-by-line and rules use Python regex `search`.
-- `loader_type=docx` with `regex_patterns`: paragraph text rules use Python regex `match` (start of string).
-- If a regex has capture groups, `metadata.title` uses `group(1)`.
-- If no capture group exists, title falls back to text after the matched portion (or full line if needed).
+| Name | Type | Required |
+|---|---|---|
+| `project_id` | string | yes |
 
-Important error behavior:
+Request body (`LoadDocumentsFromUrlRequest`):
 
-- `loader_type=regex` with missing/empty `patterns` -> `400 invalid_loader_params`
-- unsupported `loader_type` (and no `source_text`) -> `400 unsupported_loader`
-- `loader_type=miner_u` when feature disabled -> `403 capability_disabled`
-- `loader_type=miner_u` dependency missing -> explicit dependency/runtime error (no fallback)
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `loader_type` | string \| null | no | `null` | allowed: `web` or `web_async` |
+| `loader_params` | object | yes | `{}` | must include `url` |
+
+Response `200`: `DocumentSetWithItems`
+
+### GET `/api/v1/projects/{project_id}/document_sets`
+
+Response `200`: `DocumentSetOut[]`
+
+### GET `/api/v1/document_sets/{document_set_version_id}`
+
+Response `200`: `DocumentSetWithItems`
+
+### POST `/api/v1/document_sets/{document_set_version_id}/segments`
+
+Path params:
+
+| Name | Type | Required |
+|---|---|---|
+| `document_set_version_id` | string | yes |
+
+Request body (`CreateSegmentsFromDocumentSetRequest`):
+
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `split_strategy` | string | yes | - | splitter/chunker strategy |
+| `splitter_params` | object | no | `{}` | strategy-specific settings |
+| `params` | object | no | `{}` | free-form metadata params |
 
 Response `200`: `SegmentSetWithItems`
 
 Behavior notes:
 
-- For standard creation, existing active segment sets of the same `document_version_id` are deactivated.
-- Items in response are ordered by `position asc`.
-- Segment set `params` persists loader metadata (`loader_type`, `loader_params`, `source_text` flag).
+- Segment creation is split-only at this stage; loader fields are not part of this request.
+- For file-backed lineage, active-segment semantics remain tied to `document_version_id`.
 
 ### GET `/api/v1/projects/{project_id}/segment_sets`
 
@@ -1100,10 +1128,10 @@ Multipart form fields:
 | Field | Type | Required | Default | Constraints / behavior |
 |---|---|---|---|---|
 | `file` | binary file | yes | - | uploaded source file |
-| `loader_type` | string | yes | - | same allowed set as segment creation loader |
-| `loader_params_json` | string \| null | no | `null` | valid JSON string; parsed to object and used as segment `loader_params` |
-| `chunk_strategy` | string | no | `recursive` | same strategy set as chunk endpoint |
-| `chunker_params_json` | string \| null | no | `null` | valid JSON string; parsed to object and used as `chunker_params` |
+| `loader_type` | string \| null | no | `null` | optional loader override for load stage |
+| `loader_params_json` | string \| null | no | `null` | valid JSON string; parsed to load-stage `loader_params` |
+| `split_strategy` | string | yes | - | segment split strategy |
+| `splitter_params_json` | string \| null | no | `null` | valid JSON string; parsed to split-stage `splitter_params` |
 | `create_index` | boolean | no | `false` | whether to attempt index build stage |
 | `index_id` | string \| null | no | `null` | required to actually build index when `create_index=true` |
 | `index_params_json` | string \| null | no | `null` | valid JSON string; parsed to object and passed as index build `params` |
@@ -1111,16 +1139,17 @@ Multipart form fields:
 
 JSON-form field expectations:
 
-- `loader_params_json`: same keys as segment creation `loader_params` table.
-- `chunker_params_json`: same keys as chunk endpoint `chunker_params` table.
+- `loader_params_json`: same keys as load-stage `loader_params`.
+- `splitter_params_json`: same keys as split strategy options.
 - `index_params_json`: free-form object persisted on index build record; no enforced keys.
 
 Response `200`: `PipelineResponse`
 
 Behavior notes:
 
-- `execution_mode=async`: returns immediately with `status="queued"` and `job_id`; ids for generated artifacts are empty strings.
+- `execution_mode=async`: returns immediately with `status="queued"` and `job_id`; artifact ids are `null`.
 - `execution_mode=sync`: runs full pipeline and returns concrete ids with `status="succeeded"`.
+- Pipeline lineage includes `document_set_version_id` between document upload and segment generation.
 - Index build stage runs only when `create_index=true` and `index_id` is provided.
 
 ### GET `/api/v1/projects/{project_id}/artifacts`
@@ -1232,11 +1261,14 @@ Response `200`: `TableSummarizeResponse`
 | `summary` | string | generated summary text |
 | `summarizer_type` | string | `mock` or `llm` |
 
-## Segment and Chunk Details (Strategies, Types, Options)
+## Segment and Chunk Details (Historical Notes)
 
-## Segment loader types
+The canonical ingestion contract is now documented in:
+- `docs/rag_lib_load_split_contract.md`
 
-Used by `POST /api/v1/document_versions/{version_id}/segments` when `source_text` is absent.
+The subsection below is retained as historical implementation detail and is not the source of truth for current load endpoints.
+
+## Legacy segment loader notes
 
 | Loader `loader_type` | Supported params (`loader_params`) | Notes |
 |---|---|---|
@@ -1866,8 +1898,8 @@ All timestamps are RFC3339/ISO-8601 datetime strings.
 | `project_id` | string |
 | `document_id` | string |
 | `document_version_id` | string |
+| `document_set_version_id` | string |
 | `segment_set_version_id` | string |
-| `chunk_set_version_id` | string |
 | `index_build_id` | string \| null |
 | `job_id` | string \| null |
 | `status` | string |

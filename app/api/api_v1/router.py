@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.api_v1.endpoints import (
     admin,
     artifacts,
+    document_sets,
     documents,
     graph,
     indexes,
@@ -18,6 +19,7 @@ from app.api.api_v1.endpoints import (
 api_router = APIRouter()
 api_router.include_router(projects.router, tags=["projects"])
 api_router.include_router(documents.router, tags=["documents"])
+api_router.include_router(document_sets.router, tags=["document_sets"])
 api_router.include_router(segments.router, tags=["segments"])
 api_router.include_router(indexes.router, tags=["indexes"])
 api_router.include_router(graph.router, tags=["graph"])

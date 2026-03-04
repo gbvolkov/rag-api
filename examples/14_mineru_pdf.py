@@ -25,8 +25,8 @@ def run_example(client=None):
         )
         section += 1
 
-        print_section(section, "Create segments (miner_u)")
-        seg = api.create_segments(
+        print_section(section, "Load documents (miner_u)")
+        loaded = api.load_documents(
             artifacts["document_version_id"],
             loader_type="miner_u",
             loader_params={
@@ -37,6 +37,18 @@ def run_example(client=None):
                 "parse_formula": False,
                 "parse_table": False,
             },
+        )
+        artifacts["document_set_version_id"] = loaded["document_set"]["document_set_version_id"]
+        print_kv(
+            "Documents loaded",
+            {"document_set_version_id": artifacts["document_set_version_id"], "items": len(loaded["items"])},
+        )
+        section += 1
+
+        print_section(section, "Create segments")
+        seg = api.create_segments(
+            artifacts["document_set_version_id"],
+            split_strategy="identity",
         )
         artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
         print_kv(

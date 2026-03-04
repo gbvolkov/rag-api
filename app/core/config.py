@@ -1,5 +1,6 @@
 import json
 from importlib import metadata
+from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,98 @@ def _detect_rag_lib_producer_version() -> str:
             pass
 
     return dist.version or "unknown"
+
+
+def _default_loader_policy_mime_class_map() -> dict[str, str]:
+    return {
+        "application/pdf": "pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "word",
+        "text/html": "html",
+        "application/xhtml+xml": "html",
+        "text/csv": "csv",
+        "application/csv": "csv",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "excel",
+        "application/json": "json",
+        "text/json": "json",
+        "text/plain": "text",
+        "text/markdown": "text",
+    }
+
+
+def _default_loader_policy_extension_class_map() -> dict[str, str]:
+    return {
+        ".pdf": "pdf",
+        ".docx": "word",
+        ".html": "html",
+        ".htm": "html",
+        ".xhtml": "html",
+        ".csv": "csv",
+        ".xlsx": "excel",
+        ".json": "json",
+        ".txt": "text",
+        ".md": "text",
+        ".log": "text",
+    }
+
+
+def _default_loader_policy_class_rules() -> dict[str, dict[str, Any]]:
+    return {
+        "pdf": {
+            "default_loader": "pdf",
+            "allowed_loaders": ["pdf", "miner_u", "pymupdf", "text", "regex"],
+        },
+        "word": {
+            "default_loader": "docx",
+            "allowed_loaders": ["docx", "text", "regex"],
+        },
+        "html": {
+            "default_loader": "html",
+            "allowed_loaders": ["html", "text", "regex"],
+        },
+        "csv": {
+            "default_loader": "csv",
+            "allowed_loaders": ["csv", "text", "table", "regex"],
+        },
+        "excel": {
+            "default_loader": "excel",
+            "allowed_loaders": ["excel", "text", "table", "regex"],
+        },
+        "json": {
+            "default_loader": "json",
+            "allowed_loaders": ["json", "text", "regex"],
+        },
+        "text": {
+            "default_loader": "text",
+            "allowed_loaders": ["text", "regex", "table"],
+        },
+        "web": {
+            "default_loader": "web",
+            "allowed_loaders": ["web", "web_async"],
+        },
+    }
+
+
+def _default_loader_policy_loader_defaults() -> dict[str, dict[str, Any]]:
+    return {
+        "pdf": {"parse_mode": "text"},
+        "miner_u": {"parse_mode": "auto"},
+        "pymupdf": {"output_format": "markdown"},
+        "docx": {},
+        "html": {"output_format": "markdown"},
+        "csv": {"output_format": "markdown"},
+        "excel": {"output_format": "markdown"},
+        "json": {
+            "output_format": "json",
+            "schema": ".",
+            "schema_dialect": "dot_path",
+            "ensure_ascii": False,
+        },
+        "text": {},
+        "table": {},
+        "regex": {},
+        "web": {"depth": 0, "output_format": "markdown", "fetch_mode": "requests"},
+        "web_async": {"depth": 0, "output_format": "markdown", "fetch_mode": "requests", "max_concurrency": 5},
+    }
 
 
 class Settings(BaseSettings):
@@ -80,6 +173,11 @@ class Settings(BaseSettings):
     page_size_max: int = 200
 
     worker_enabled: bool = True
+
+    loader_policy_mime_class_map: dict[str, str] = Field(default_factory=_default_loader_policy_mime_class_map)
+    loader_policy_extension_class_map: dict[str, str] = Field(default_factory=_default_loader_policy_extension_class_map)
+    loader_policy_class_rules: dict[str, dict[str, Any]] = Field(default_factory=_default_loader_policy_class_rules)
+    loader_policy_loader_defaults: dict[str, dict[str, Any]] = Field(default_factory=_default_loader_policy_loader_defaults)
 
 
 settings = Settings()

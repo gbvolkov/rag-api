@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SegmentType(str, Enum):
@@ -42,67 +42,23 @@ class SegmentSetOut(BaseModel):
     total_items: int = 0
 
 
-class CreateSegmentsRequest(BaseModel):
-    loader_type: str = Field(
+class CreateSegmentsFromDocumentSetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    split_strategy: str = Field(
         description=(
-            "Segment loader type. Supported: pdf|miner_u|pymupdf|docx|html|csv|excel|json|text|table|regex|web|web_async."
+            "Required split strategy. Supported: "
+            "recursive|token|sentence|regex|regex_hierarchy|markdown_hierarchy|"
+            "json|qa|markdown_table|csv_table|html|semantic|identity."
         ),
-        examples=["regex", "docx", "pdf", "text"],
-    )
-    loader_params: dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Loader-specific options. "
-            "Regex loader expects patterns/exclude_patterns/include_parent_content. "
-            "JSON loader uses schema/schema_dialect/output_format. "
-            "web/web_async loaders must be used via URL ingestion endpoint."
-        ),
-        examples=[
-            {
-                "patterns": [
-                    [1, "^Section\\s+(\\d+):"],
-                    [2, "^Subsection\\s+(\\d+\\.\\d+):"],
-                ],
-                "exclude_patterns": ["^\\s*#"],
-                "include_parent_content": 2,
-            },
-            {
-                "patterns": [
-                    {"level": 1, "pattern": "^Chapter\\s+(.+)$"},
-                    {"level": 2, "pattern": ["^Section\\s+(.+)$", "^Clause\\s+(.+)$"]},
-                ]
-            },
-            {
-                "schema": ".items",
-                "schema_dialect": "dot_path",
-                "output_format": "markdown",
-            },
-        ],
-    )
-    split_strategy: str | None = Field(
-        default=None,
-        description=(
-            "Optional logical split strategy applied after loader output. "
-            "Supported: recursive|token|sentence|regex|regex_hierarchy|markdown_hierarchy|"
-            "json|qa|markdown_table|csv_table|html|semantic."
-        ),
-        examples=["regex", "markdown_hierarchy"],
+        examples=["regex", "markdown_hierarchy", "identity"],
     )
     splitter_params: dict[str, Any] = Field(
         default_factory=dict,
-        description=(
-            "Split-strategy-specific options. For split_strategy=regex, 'pattern' is required."
-        ),
+        description="Split-strategy-specific options. For strategy=regex, 'pattern' is required.",
         examples=[{"pattern": "(?=##Term:)"}],
     )
-    source_text: str | None = Field(
-        default=None,
-        description=(
-            "Optional direct text input that replaces file loading. "
-            "If split_strategy is set, the provided text is split accordingly."
-        ),
-        examples=["Inline text to segment without reading the uploaded file."],
-    )
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 class ClonePatchSegmentRequest(BaseModel):

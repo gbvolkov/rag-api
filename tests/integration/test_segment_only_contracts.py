@@ -17,9 +17,15 @@ def _upload_text_document(client, project_id: str, content: bytes) -> str:
 
 
 def _create_segments(client, version_id: str) -> tuple[str, list[dict]]:
-    resp = client.post(
-        f"/api/v1/document_versions/{version_id}/segments",
+    loaded = client.post(
+        f"/api/v1/document_versions/{version_id}/load_documents",
         json={"loader_type": "text", "loader_params": {}},
+    )
+    assert loaded.status_code == 200, loaded.text
+    document_set_id = loaded.json()["document_set"]["document_set_version_id"]
+    resp = client.post(
+        f"/api/v1/document_sets/{document_set_id}/segments",
+        json={"split_strategy": "identity", "splitter_params": {}, "params": {}},
     )
     assert resp.status_code == 200, resp.text
     payload = resp.json()
@@ -269,9 +275,9 @@ def test_pipeline_sync_and_async_outputs_are_segment_only(client, monkeypatch):
     )
     assert sync_resp.status_code == 200, sync_resp.text
     sync_payload = sync_resp.json()
+    assert sync_payload["document_set_version_id"]
     assert sync_payload["segment_set_version_id"]
-    assert sync_payload["source_set_id"]
-    assert "chunk_set_version_id" not in sync_payload
+    assert "source_set_id" not in sync_payload
 
     async_resp = client.post(
         f"/api/v1/projects/{project_id}/pipeline/file",
@@ -287,8 +293,8 @@ def test_pipeline_sync_and_async_outputs_are_segment_only(client, monkeypatch):
     assert async_resp.status_code == 200, async_resp.text
     async_payload = async_resp.json()
     assert async_payload["job_id"]
-    assert async_payload["source_set_id"] is None
-    assert "chunk_set_version_id" not in async_payload
+    assert async_payload["document_set_version_id"] is None
+    assert "source_set_id" not in async_payload
 
 
 def test_artifacts_listing_excludes_chunk_artifact_kinds(client):

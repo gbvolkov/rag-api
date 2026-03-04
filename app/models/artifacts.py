@@ -63,6 +63,41 @@ class DocumentVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
 
 
+class DocumentSetVersion(Base):
+    __tablename__ = "document_set_versions"
+
+    document_set_version_id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.project_id", ondelete="CASCADE"), index=True)
+    document_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("document_versions.version_id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    params_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    input_refs_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    artifact_uri: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    producer_type: Mapped[str] = mapped_column(String(100), default="rag_lib")
+    producer_version: Mapped[str] = mapped_column(String(100), default="unknown")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class DocumentItem(Base):
+    __tablename__ = "document_items"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
+    document_set_version_id: Mapped[str] = mapped_column(
+        ForeignKey("document_set_versions.document_set_version_id", ondelete="CASCADE"),
+        index=True,
+    )
+    item_id: Mapped[str] = mapped_column(String(128), index=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    original_format: Mapped[str] = mapped_column(String(50), default="text")
+
+
 class SegmentSetVersion(Base):
     __tablename__ = "segment_set_versions"
 

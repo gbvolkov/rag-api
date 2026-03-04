@@ -12,9 +12,15 @@ def _create_segment_set(client, project_id: str) -> str:
     upload = client.post(f"/api/v1/projects/{project_id}/documents", files=files)
     assert upload.status_code == 200, upload.text
     version_id = upload.json()["document_version"]["version_id"]
-    seg = client.post(
-        f"/api/v1/document_versions/{version_id}/segments",
+    loaded = client.post(
+        f"/api/v1/document_versions/{version_id}/load_documents",
         json={"loader_type": "text", "loader_params": {}},
+    )
+    assert loaded.status_code == 200, loaded.text
+    document_set_id = loaded.json()["document_set"]["document_set_version_id"]
+    seg = client.post(
+        f"/api/v1/document_sets/{document_set_id}/segments",
+        json={"split_strategy": "identity", "splitter_params": {}, "params": {}},
     )
     assert seg.status_code == 200, seg.text
     return seg.json()["segment_set"]["segment_set_version_id"]

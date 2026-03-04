@@ -23,11 +23,22 @@ def run_example(client=None):
         )
         section += 1
 
-        print_section(section, "Create logical segments (regex)")
-        seg = api.create_segments(
+        print_section(section, "Load documents (text loader)")
+        loaded = api.load_documents(
             artifacts["document_version_id"],
             loader_type="text",
             loader_params={},
+        )
+        artifacts["document_set_version_id"] = loaded["document_set"]["document_set_version_id"]
+        print_kv(
+            "Documents loaded",
+            {"document_set_version_id": artifacts["document_set_version_id"], "items": len(loaded["items"])},
+        )
+        section += 1
+
+        print_section(section, "Create logical segments (regex)")
+        seg = api.create_segments(
+            artifacts["document_set_version_id"],
             split_strategy="regex",
             splitter_params={"pattern": r"(?=##Term:)"},
         )

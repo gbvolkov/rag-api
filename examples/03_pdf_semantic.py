@@ -1,6 +1,8 @@
 from examples.api_client import ApiClientError
 from examples.example_utils import default_client, docs_path, export_results_json, print_api_error, print_kv, print_section, project_name
 
+DOC_PAGE_LIMIT = 10
+
 
 def run_example(client=None):
     api = client or default_client()
@@ -28,11 +30,23 @@ def run_example(client=None):
         )
         section += 1
 
-        print_section(section, "Create segments (pymupdf markdown)")
-        seg = api.create_segments(
+        print_section(section, "Load documents (pymupdf markdown)")
+        loaded = api.load_documents(
             artifacts["document_version_id"],
             loader_type="pymupdf",
             loader_params={"output_format": "markdown"},
+        )
+        artifacts["document_set_version_id"] = loaded["document_set"]["document_set_version_id"]
+        print_kv(
+            "Documents loaded",
+            {"document_set_version_id": artifacts["document_set_version_id"], "items": len(loaded["items"])},
+        )
+        section += 1
+
+        print_section(section, "Create segments")
+        seg = api.create_segments(
+            artifacts["document_set_version_id"],
+            split_strategy="identity",
         )
         artifacts["used_loader"] = "pymupdf"
         artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
@@ -41,6 +55,9 @@ def run_example(client=None):
             {"segment_set_version_id": artifacts["segment_set_version_id"], "items": len(seg["items"])},
         )
         section += 1
+
+        if DOC_PAGE_LIMIT and len(seg["items"]) > DOC_PAGE_LIMIT:
+            artifacts["doc_page_limit"] = DOC_PAGE_LIMIT
 
         print_section(section, "Create structured chunks (regex_hierarchy)")
         structured = api.split_segment_set(
@@ -103,7 +120,7 @@ def run_example(client=None):
             query = "balance summary"
 
         run_ids = []
-        print_section(section, "Retrieve (vector)")
+        print_section(section, "Retrieve (vector)") 
         vec = api.retrieve(
             artifacts["project_id"],
             {
@@ -132,7 +149,7 @@ def run_example(client=None):
                     "top_k": 3,
                     "max_score_ratio": 0.08,
                     "device": "cpu",
-                },
+                }, 
                 "persist": True,
             },
         )

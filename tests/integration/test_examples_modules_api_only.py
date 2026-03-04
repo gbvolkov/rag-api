@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import runpy
 from pathlib import Path
 from typing import Any
@@ -57,41 +58,50 @@ class _LocalApiClient:
             data = {"parser_params_json": __import__("json").dumps(parser_params)}
             return self._request("POST", f"/projects/{project_id}/documents", files=files, data=data)
 
-    def create_segments(
+    def load_documents(
         self,
         version_id: str,
-        loader_type: str,
+        loader_type: str | None = None,
         loader_params: dict[str, Any] | None = None,
-        split_strategy: str | None = None,
-        splitter_params: dict[str, Any] | None = None,
-        source_text: str | None = None,
-    ):
-        payload = {
-            "loader_type": loader_type,
-            "loader_params": loader_params or {},
-            "split_strategy": split_strategy,
-            "splitter_params": splitter_params or {},
-        }
-        if source_text is not None:
-            payload["source_text"] = source_text
-        return self._request("POST", f"/document_versions/{version_id}/segments", json=payload)
-
-    def create_segments_from_url(
-        self,
-        project_id: str,
-        loader_type: str,
-        loader_params: dict[str, Any],
-        split_strategy: str | None = None,
-        splitter_params: dict[str, Any] | None = None,
     ):
         return self._request(
             "POST",
-            f"/projects/{project_id}/segments/url",
+            f"/document_versions/{version_id}/load_documents",
             json={
                 "loader_type": loader_type,
-                "loader_params": loader_params,
+                "loader_params": loader_params or {},
+            },
+        )
+
+    def load_documents_from_url(
+        self,
+        project_id: str,
+        loader_type: str | None = None,
+        loader_params: dict[str, Any] | None = None,
+    ):
+        return self._request(
+            "POST",
+            f"/projects/{project_id}/load_documents/url",
+            json={
+                "loader_type": loader_type,
+                "loader_params": loader_params or {},
+            },
+        )
+
+    def create_segments(
+        self,
+        document_set_version_id: str,
+        split_strategy: str,
+        splitter_params: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ):
+        return self._request(
+            "POST",
+            f"/document_sets/{document_set_version_id}/segments",
+            json={
                 "split_strategy": split_strategy,
                 "splitter_params": splitter_params or {},
+                "params": params or {},
             },
         )
 
@@ -179,7 +189,7 @@ def _setup_feature_mocks(monkeypatch):
     monkeypatch.setattr(settings, "feature_enable_miner_u", True)
 
     monkeypatch.setattr(sts, "require_module", lambda *args, **kwargs: None)
-    monkeypatch.setattr("app.services.segment_service.require_module", lambda *args, **kwargs: None)
+    monkeypatch.setattr("app.services.document_load_service.require_module", lambda *args, **kwargs: None)
     monkeypatch.setattr(sts.SegmentTransformService, "_get_llm", lambda self, provider, model, temperature: object())
     monkeypatch.setattr("rag_lib.llm.factory.create_llm", lambda **kwargs: object())
     monkeypatch.setattr("rag_lib.processors.enricher.SegmentEnricher.enrich", lambda self, segments: segments)
@@ -271,12 +281,22 @@ def _run_example(path: Path, local_client):
     return namespace["run_example"](client=local_client)
 
 
+def _selected_example_files() -> list[str]:
+    only = os.getenv("EXAMPLE_FILE")
+    if not only:
+        return EXAMPLE_FILES
+    filename = only.strip()
+    if filename not in EXAMPLE_FILES:
+        raise AssertionError(f"EXAMPLE_FILE must be one of: {', '.join(EXAMPLE_FILES)}")
+    return [filename]
+
+
 def test_all_examples_smoke_api_only(client, monkeypatch):
     _setup_feature_mocks(monkeypatch)
     local_client = _LocalApiClient(client)
     examples_dir = Path(__file__).resolve().parents[2] / "examples"
 
-    for filename in EXAMPLE_FILES:
+    for filename in _selected_example_files():
         artifacts = _run_example(examples_dir / filename, local_client)
         assert artifacts["project_id"]
         assert artifacts["status"] in {"ok", "error"}

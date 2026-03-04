@@ -9,6 +9,7 @@ from app.core.errors import api_error
 from app.models import (
     ArtifactSoftDelete,
     Document,
+    DocumentSetVersion,
     DocumentVersion,
     GraphBuild,
     Index,
@@ -54,6 +55,14 @@ class ArtifactService:
             "created_at",
             "is_deleted",
             lambda r: {"document_id": r.document_id, "status": r.status},
+        )
+        await add_rows(
+            select(DocumentSetVersion).where(DocumentSetVersion.project_id == project_id),
+            "document_set",
+            "document_set_version_id",
+            "created_at",
+            "is_deleted",
+            lambda r: {"document_version_id": r.document_version_id, "is_active": r.is_active},
         )
         await add_rows(
             select(SegmentSetVersion).where(SegmentSetVersion.project_id == project_id),
@@ -144,6 +153,7 @@ class ArtifactService:
         tables = [
             (Document, "document", "project_id", "document_id"),
             (DocumentVersion, "document_version", "document_id", "version_id"),
+            (DocumentSetVersion, "document_set", "project_id", "document_set_version_id"),
             (SegmentSetVersion, "segment_set", "project_id", "segment_set_version_id"),
             (Index, "index", "project_id", "index_id"),
             (IndexBuild, "index_build", "project_id", "build_id"),

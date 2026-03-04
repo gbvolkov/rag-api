@@ -54,41 +54,56 @@ class ApiClient:
             data = {"parser_params_json": json.dumps(parser_params)}
             return self._request("POST", f"/projects/{project_id}/documents", files=files, data=data)
 
-    def create_segments(
+    def load_documents(
         self,
         version_id: str,
-        loader_type: str,
+        loader_type: str | None = None,
         loader_params: dict[str, Any] | None = None,
-        split_strategy: str | None = None,
-        splitter_params: dict[str, Any] | None = None,
-        source_text: str | None = None,
-    ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "loader_type": loader_type,
-            "loader_params": loader_params or {},
-            "split_strategy": split_strategy,
-            "splitter_params": splitter_params or {},
-        }
-        if source_text is not None:
-            payload["source_text"] = source_text
-        return self._request("POST", f"/document_versions/{version_id}/segments", json=payload)
-
-    def create_segments_from_url(
-        self,
-        project_id: str,
-        loader_type: str,
-        loader_params: dict[str, Any],
-        split_strategy: str | None = None,
-        splitter_params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             "POST",
-            f"/projects/{project_id}/segments/url",
+            f"/document_versions/{version_id}/load_documents",
             json={
                 "loader_type": loader_type,
-                "loader_params": loader_params,
+                "loader_params": loader_params or {},
+            },
+        )
+
+    def load_documents_from_url(
+        self,
+        project_id: str,
+        loader_type: str | None = None,
+        loader_params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/projects/{project_id}/load_documents/url",
+            json={
+                "loader_type": loader_type,
+                "loader_params": loader_params or {},
+            },
+        )
+
+    def list_document_sets(self, project_id: str) -> list[dict[str, Any]]:
+        return self._request("GET", f"/projects/{project_id}/document_sets")
+
+    def get_document_set(self, document_set_version_id: str) -> dict[str, Any]:
+        return self._request("GET", f"/document_sets/{document_set_version_id}")
+
+    def create_segments(
+        self,
+        document_set_version_id: str,
+        split_strategy: str,
+        splitter_params: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/document_sets/{document_set_version_id}/segments",
+            json={
                 "split_strategy": split_strategy,
                 "splitter_params": splitter_params or {},
+                "params": params or {},
             },
         )
 

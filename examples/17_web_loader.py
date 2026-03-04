@@ -16,8 +16,8 @@ def run_example(client=None):
         print_kv("Project created", {"project_id": artifacts["project_id"]})
         section += 1
 
-        print_section(section, "Ingest URL source (sync web)")
-        seg_sync = api.create_segments_from_url(
+        print_section(section, "Load URL documents (sync web)")
+        loaded_sync = api.load_documents_from_url(
             artifacts["project_id"],
             loader_type="web",
             loader_params={
@@ -29,15 +29,24 @@ def run_example(client=None):
                 "follow_download_links": False,
             },
         )
+        artifacts["document_set_version_id"] = loaded_sync["document_set"]["document_set_version_id"]
+        seg_sync = api.create_segments(
+            artifacts["document_set_version_id"],
+            split_strategy="identity",
+        )
         artifacts["segment_set_version_id"] = seg_sync["segment_set"]["segment_set_version_id"]
         print_kv(
             "URL segments created",
-            {"segment_set_version_id": artifacts["segment_set_version_id"], "items": len(seg_sync["items"])},
+            {
+                "document_set_version_id": artifacts["document_set_version_id"],
+                "segment_set_version_id": artifacts["segment_set_version_id"],
+                "items": len(seg_sync["items"]),
+            },
         )
         section += 1
 
-        print_section(section, "Ingest URL source (async web)")
-        seg_async = api.create_segments_from_url(
+        print_section(section, "Load URL documents (async web)")
+        loaded_async = api.load_documents_from_url(
             artifacts["project_id"],
             loader_type="web_async",
             loader_params={
@@ -50,10 +59,19 @@ def run_example(client=None):
                 "max_concurrency": 4,
             },
         )
+        artifacts["async_document_set_version_id"] = loaded_async["document_set"]["document_set_version_id"]
+        seg_async = api.create_segments(
+            artifacts["async_document_set_version_id"],
+            split_strategy="identity",
+        )
         artifacts["async_segment_set_version_id"] = seg_async["segment_set"]["segment_set_version_id"]
         print_kv(
             "URL segments created",
-            {"segment_set_version_id": artifacts["async_segment_set_version_id"], "items": len(seg_async["items"])},
+            {
+                "document_set_version_id": artifacts["async_document_set_version_id"],
+                "segment_set_version_id": artifacts["async_segment_set_version_id"],
+                "items": len(seg_async["items"]),
+            },
         )
         section += 1
     except ApiClientError as exc:

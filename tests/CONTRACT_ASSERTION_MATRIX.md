@@ -2,21 +2,22 @@
 
 This matrix tracks strict API/service behaviors aligned with `rag-lib==0.2.2`.
 
-## Segment Loaders
+## Load Stage
 
-- `loader_type=docx` uses `DocXLoader` and returns text segments from markdown document output.
-- `loader_type=json` accepts `schema`, `schema_dialect`, `output_format`, `ensure_ascii`.
-- `loader_type=text` accepts no required params and returns one text document.
-- `loader_type=regex` loads raw document then applies `RegexHierarchySplitter`.
-- Legacy `loader_type=qa` is rejected with `400 unsupported_loader`.
-- Legacy JSON param `jq_schema` is rejected by strict schema/service tests.
+- `POST /api/v1/document_versions/{version_id}/load_documents` loads and persists `Document[]`.
+- `POST /api/v1/projects/{project_id}/load_documents/url` loads URL content and persists `Document[]`.
+- Supported loaders: `pdf|miner_u|pymupdf|docx|html|csv|excel|json|text|table|regex|web|web_async`.
+- `loader_type=qa` is rejected with `400 unsupported_loader`.
+- URL sources accept only `web|web_async`.
 
-## URL Loaders
+## Segment Stage
 
-- `POST /api/v1/projects/{project_id}/segments/url`:
-  - accepts only `loader_type=web|web_async`;
-  - requires `loader_params.url`;
-  - persists crawl diagnostics in segment set params.
+- `POST /api/v1/document_sets/{document_set_version_id}/segments` creates `Segment[]` from loaded documents.
+- Request is split-only: `split_strategy`, `splitter_params`, `params`.
+- Loader fields are not accepted in segment-stage requests.
+- Legacy combined ingestion endpoints are removed:
+  - `POST /api/v1/document_versions/{version_id}/segments`
+  - `POST /api/v1/projects/{project_id}/segments/url`
 
 ## Chunk Strategies
 

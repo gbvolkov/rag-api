@@ -1,5 +1,12 @@
 from app.schemas.artifact import ArtifactOut
 from app.schemas.common import CursorPage, DeleteResponse, RestoreResponse, SoftDeleteRequest
+from app.schemas.document_set import (
+    DocumentItemOut,
+    DocumentSetOut,
+    DocumentSetWithItems,
+    LoadDocumentsFromUrlRequest,
+    LoadDocumentsRequest,
+)
 from app.schemas.document import DocumentOut, DocumentVersionOut
 from app.schemas.graph import CreateGraphBuildRequest, GraphBuildOut
 from app.schemas.indexing import (
@@ -16,7 +23,7 @@ from app.schemas.project import CreateProjectRequest, ProjectDeleteResponse, Pro
 from app.schemas.retrieval import RetrieveRequest, RetrieveResponse, RetrievalRunOut
 from app.schemas.segment import (
     ClonePatchSegmentRequest,
-    CreateSegmentsRequest,
+    CreateSegmentsFromDocumentSetRequest,
     EnrichSegmentsRequest,
     RaptorSegmentsRequest,
     SplitSegmentsRequest,
@@ -32,6 +39,11 @@ __all__ = [
     "DeleteResponse",
     "RestoreResponse",
     "SoftDeleteRequest",
+    "DocumentItemOut",
+    "DocumentSetOut",
+    "DocumentSetWithItems",
+    "LoadDocumentsRequest",
+    "LoadDocumentsFromUrlRequest",
     "DocumentOut",
     "DocumentVersionOut",
     "CreateGraphBuildRequest",
@@ -53,7 +65,7 @@ __all__ = [
     "RetrieveRequest",
     "RetrieveResponse",
     "RetrievalRunOut",
-    "CreateSegmentsRequest",
+    "CreateSegmentsFromDocumentSetRequest",
     "ClonePatchSegmentRequest",
     "SplitSegmentsRequest",
     "EnrichSegmentsRequest",

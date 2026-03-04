@@ -1,5 +1,7 @@
 from app.models import (
     Document,
+    DocumentItem,
+    DocumentSetVersion,
     DocumentVersion,
     GraphBuild,
     Index,
@@ -12,6 +14,7 @@ from app.models import (
 )
 from app.core.errors import api_error
 from app.schemas.document import DocumentOut, DocumentVersionOut
+from app.schemas.document_set import DocumentItemOut, DocumentSetOut
 from app.schemas.graph import GraphBuildOut
 from app.schemas.indexing import IndexBuildDocStoreOut, IndexBuildOut, IndexOut
 from app.schemas.job import JobOut
@@ -60,6 +63,33 @@ def document_version_out(m: DocumentVersion) -> DocumentVersionOut:
         is_active=m.is_active,
         is_deleted=m.is_deleted,
         created_at=m.created_at,
+    )
+
+
+def document_set_out(m: DocumentSetVersion, total_items: int = 0) -> DocumentSetOut:
+    return DocumentSetOut(
+        document_set_version_id=m.document_set_version_id,
+        project_id=m.project_id,
+        document_version_id=m.document_version_id,
+        params=m.params_json or {},
+        input_refs=m.input_refs_json or {},
+        artifact_uri=m.artifact_uri,
+        producer_type=m.producer_type,
+        producer_version=m.producer_version,
+        is_active=m.is_active,
+        is_deleted=m.is_deleted,
+        created_at=m.created_at,
+        total_items=total_items,
+    )
+
+
+def document_item_out(m: DocumentItem) -> DocumentItemOut:
+    return DocumentItemOut(
+        item_id=m.item_id,
+        position=m.position,
+        content=m.content,
+        metadata=m.metadata_json or {},
+        original_format=m.original_format,
     )
 
 

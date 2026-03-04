@@ -23,7 +23,7 @@ def run_example(client=None):
         artifacts["document_id"] = upload["document"]["document_id"]
         version_id = upload["document_version"]["version_id"]
         artifacts["document_version_id"] = version_id
-        api.create_segments(version_id, loader_type="pptx", loader_params={})
+        api.load_documents(version_id, loader_type="pptx", loader_params={})
     except ApiClientError as exc:
         artifacts["error_status_code"] = exc.status_code
         artifacts["error_payload"] = exc.payload

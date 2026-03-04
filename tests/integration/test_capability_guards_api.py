@@ -16,9 +16,15 @@ def _create_segment_set(client, project_id: str) -> str:
     )
     assert upload.status_code == 200, upload.text
     version_id = upload.json()["document_version"]["version_id"]
+    loaded = client.post(
+        f"/api/v1/document_versions/{version_id}/load_documents",
+        json={"loader_type": "text", "loader_params": {}},
+    )
+    assert loaded.status_code == 200, loaded.text
+    document_set_id = loaded.json()["document_set"]["document_set_version_id"]
     seg = client.post(
-        f"/api/v1/document_versions/{version_id}/segments",
-        json={"loader_type": "json", "loader_params": {}, "source_text": "alpha beta gamma"},
+        f"/api/v1/document_sets/{document_set_id}/segments",
+        json={"split_strategy": "identity", "splitter_params": {}, "params": {}},
     )
     assert seg.status_code == 200, seg.text
     return seg.json()["segment_set"]["segment_set_version_id"]
@@ -67,4 +73,3 @@ def test_segment_enrich_and_raptor_are_guarded_when_features_disabled(client):
     )
     assert raptor.status_code == 403, raptor.text
     assert raptor.json()["detail"]["code"] == "capability_disabled"
-

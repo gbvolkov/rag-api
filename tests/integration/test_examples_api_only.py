@@ -17,9 +17,15 @@ def _upload_document(client, project_id: str, name: str = "doc.txt", content: by
 
 
 def _create_segments_from_version(client, version_id: str, loader_type: str = "text", loader_params: dict | None = None) -> str:
-    resp = client.post(
-        f"/api/v1/document_versions/{version_id}/segments",
+    loaded = client.post(
+        f"/api/v1/document_versions/{version_id}/load_documents",
         json={"loader_type": loader_type, "loader_params": loader_params or {}},
+    )
+    assert loaded.status_code == 200, loaded.text
+    document_set_id = loaded.json()["document_set"]["document_set_version_id"]
+    resp = client.post(
+        f"/api/v1/document_sets/{document_set_id}/segments",
+        json={"split_strategy": "identity", "splitter_params": {}, "params": {}},
     )
     assert resp.status_code == 200, resp.text
     return resp.json()["segment_set"]["segment_set_version_id"]
@@ -209,22 +215,34 @@ def test_example_17_web_loader_sync_async_api_only(client, monkeypatch):
     )
     monkeypatch.setattr("rag_lib.loaders.web_async.AsyncWebLoader.load", _aload)
 
-    sync_resp = client.post(
-        f"/api/v1/projects/{project_id}/segments/url",
+    sync_load = client.post(
+        f"/api/v1/projects/{project_id}/load_documents/url",
         json={
             "loader_type": "web",
             "loader_params": {"url": "https://example.com", "depth": 0, "fetch_mode": "requests"},
         },
     )
+    assert sync_load.status_code == 200, sync_load.text
+    sync_document_set_id = sync_load.json()["document_set"]["document_set_version_id"]
+    sync_resp = client.post(
+        f"/api/v1/document_sets/{sync_document_set_id}/segments",
+        json={"split_strategy": "identity", "splitter_params": {}, "params": {}},
+    )
     assert sync_resp.status_code == 200, sync_resp.text
     assert len(sync_resp.json()["items"]) == 1
 
-    async_resp = client.post(
-        f"/api/v1/projects/{project_id}/segments/url",
+    async_load = client.post(
+        f"/api/v1/projects/{project_id}/load_documents/url",
         json={
             "loader_type": "web_async",
             "loader_params": {"url": "https://example.com/async", "depth": 0, "fetch_mode": "requests"},
         },
+    )
+    assert async_load.status_code == 200, async_load.text
+    async_document_set_id = async_load.json()["document_set"]["document_set_version_id"]
+    async_resp = client.post(
+        f"/api/v1/document_sets/{async_document_set_id}/segments",
+        json={"split_strategy": "identity", "splitter_params": {}, "params": {}},
     )
     assert async_resp.status_code == 200, async_resp.text
     assert len(async_resp.json()["items"]) == 1
