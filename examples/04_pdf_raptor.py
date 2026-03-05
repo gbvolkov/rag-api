@@ -1,5 +1,58 @@
+import time
+
 from examples.api_client import ApiClientError
 from examples.example_utils import default_client, docs_path, export_results_json, print_api_error, print_kv, print_section, project_name
+
+RAPTOR_POLL_INTERVAL_SECONDS = 2.0
+RAPTOR_MAX_WAIT_SECONDS = 900.0
+RAPTOR_SUBMIT_RETRIES = 2
+RAPTOR_SUBMIT_RETRY_SECONDS = 2.0
+
+
+def _wait_for_job(api, job_id: str) -> dict:
+    started = time.monotonic()
+    while True:
+        job = api.get_job(job_id)
+        status = job.get("status")
+        if status == "succeeded":
+            return job
+        if status == "failed":
+            raise ApiClientError(
+                f"RAPTOR job failed: {job_id}",
+                payload={"detail": {"code": "raptor_job_failed", "message": job.get("error_message") or "unknown error"}},
+            )
+        if RAPTOR_MAX_WAIT_SECONDS is not None and (time.monotonic() - started) > RAPTOR_MAX_WAIT_SECONDS:
+            raise ApiClientError(
+                f"RAPTOR job timed out: {job_id}",
+                payload={
+                    "detail": {
+                        "code": "raptor_job_timeout",
+                        "message": f"Job did not finish within {RAPTOR_MAX_WAIT_SECONDS:.0f} seconds",
+                    }
+                },
+            )
+        time.sleep(RAPTOR_POLL_INTERVAL_SECONDS)
+
+
+def _submit_raptor_async(api, segment_set_id: str, payload: dict) -> dict:
+    for attempt in range(RAPTOR_SUBMIT_RETRIES + 1):
+        try:
+            return api.run_raptor(segment_set_id, payload)
+        except ApiClientError as exc:
+            retryable = exc.status_code in {502, 503, 504}
+            if not retryable or attempt >= RAPTOR_SUBMIT_RETRIES:
+                raise
+            sleep_for = RAPTOR_SUBMIT_RETRY_SECONDS * (attempt + 1)
+            print_kv(
+                "RAPTOR submit retry",
+                {
+                    "attempt": f"{attempt + 1}/{RAPTOR_SUBMIT_RETRIES}",
+                    "status_code": exc.status_code,
+                    "sleep_seconds": sleep_for,
+                },
+            )
+            time.sleep(sleep_for)
+    raise RuntimeError("Unreachable RAPTOR submit retry state")
 
 
 def run_example(client=None):
@@ -14,8 +67,6 @@ def run_example(client=None):
         section += 1
 
         pdf_file = "Georgy Volkov ru.pdf"
-        if not docs_path(pdf_file).exists():
-            pdf_file = "statement.pdf"
 
         print_section(section, "Ingest source document")
         upload = api.upload_document(artifacts["project_id"], docs_path(pdf_file), "application/pdf")
@@ -41,10 +92,11 @@ def run_example(client=None):
         )
         section += 1
 
-        print_section(section, "Create segments")
+        print_section(section, "Create segments (sentence splitter)")
         seg = api.create_segments(
             artifacts["document_set_version_id"],
-            split_strategy="identity",
+            split_strategy="sentence",
+            splitter_params={"chunk_size": 200, "chunk_overlap": 20, "language": "auto"},
         )
         artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
         print_kv(
@@ -54,10 +106,12 @@ def run_example(client=None):
         section += 1
 
         print_section(section, "Run RAPTOR")
-        rap = api.run_raptor(
+        source_segment_set_id = artifacts["segment_set_version_id"]
+        rap = _submit_raptor_async(
+            api,
             artifacts["segment_set_version_id"],
             {
-                "execution_mode": "sync",
+                "execution_mode": "async",
                 "max_levels": 3,
                 "llm_provider": "openai",
                 "llm_model": "gpt-4.1-nano",
@@ -65,16 +119,32 @@ def run_example(client=None):
                 "embedding_provider": "openai",
             },
         )
-        artifacts["segment_set_version_id"] = rap["segment_set"]["segment_set_version_id"]
+        artifacts["raptor_job_id"] = rap["job_id"]
+        job = _wait_for_job(api, artifacts["raptor_job_id"])
+        result = job.get("result") or {}
+        artifacts["segment_set_version_id"] = result["segment_set_version_id"]
         runs = api.list_raptor_runs(artifacts["project_id"])
-        artifacts["raptor_run_id"] = runs[0]["raptor_run_id"] if runs else None
+        run = next(
+            (
+                r
+                for r in runs
+                if r.get("source_segment_set_version_id") == source_segment_set_id
+                and r.get("output_segment_set_version_id") == artifacts["segment_set_version_id"]
+            ),
+            None,
+        )
+        artifacts["raptor_run_id"] = run.get("raptor_run_id") if run else None
         print_kv(
             "RAPTOR completed",
-            {"segment_set_version_id": artifacts["segment_set_version_id"], "raptor_runs": len(runs)},
+            {
+                "raptor_job_id": artifacts["raptor_job_id"],
+                "segment_set_version_id": artifacts["segment_set_version_id"],
+                "raptor_run_id": artifacts["raptor_run_id"],
+            },
         )
         section += 1
 
-        print_section(section, "Create chunks")
+        print_section(section, "Create index source chunks from RAPTOR tree")
         chunk = api.split_segment_set(
             artifacts["segment_set_version_id"],
             strategy="sentence",
@@ -111,10 +181,7 @@ def run_example(client=None):
         section += 1
 
         query = "CIO Europe"
-        if "statement" in pdf_file.lower():
-            query = "balance summary"
-
-        print_section(section, "Retrieve (dual storage)")
+        print_section(section, "Retrieve (scored dual storage)")
         retrieval = api.retrieve(
             artifacts["project_id"],
             {

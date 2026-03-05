@@ -246,10 +246,15 @@ class SegmentService:
             source_metadata = dict(getattr(source, "metadata", {}) or {})
             source_segment_id = str(getattr(source, "segment_id", None) or uuid.uuid4())
 
-            if strategy in segment_output_strategies and hasattr(splitter, "create_segments"):
-                split_items = splitter.create_segments(source_content, metadata=source_metadata)
-            else:
-                split_items = splitter.split_text(source_content)
+            try:
+                if strategy in segment_output_strategies and hasattr(splitter, "create_segments"):
+                    split_items = splitter.create_segments(source_content, metadata=source_metadata)
+                else:
+                    split_items = splitter.split_text(source_content)
+            except LookupError as exc:
+                if strategy == "semantic":
+                    raise self._semantic_lookup_error(exc) from exc
+                raise
 
             for split_index, split_item in enumerate(split_items):
                 if hasattr(split_item, "content"):
@@ -300,6 +305,23 @@ class SegmentService:
                 {"split_strategy": strategy, "splitter_params": params},
             )
         return out
+
+    def _semantic_lookup_error(self, exc: LookupError):
+        error_text = str(exc)
+        dependency = "nltk punkt tokenizer data"
+        if "punkt_tab" in error_text:
+            dependency = "nltk punkt_tab tokenizer data"
+        return api_error(
+            424,
+            "missing_dependency",
+            "Semantic split strategy requires NLTK tokenizer data",
+            {
+                "strategy": "semantic",
+                "dependency": dependency,
+                "error": error_text,
+            },
+            hint="Install tokenizer data with: python -m nltk.downloader punkt punkt_tab",
+        )
 
     def _build_splitter(self, strategy: str, params: dict[str, Any]):
         length_function = self._resolve_length_function(params, error_code="invalid_splitter_params")
@@ -363,9 +385,10 @@ class SegmentService:
         if strategy == "regex_hierarchy":
             from rag_lib.chunkers.regex_hierarchy import RegexHierarchySplitter
 
-            patterns = params.get("patterns")
-            if not patterns:
-                raise api_error(400, "invalid_splitter_params", "regex_hierarchy split strategy requires patterns")
+            patterns = self._normalize_regex_hierarchy_patterns(
+                params.get("patterns"),
+                error_code="invalid_splitter_params",
+            )
             return RegexHierarchySplitter(
                 patterns=patterns,
                 exclude_patterns=params.get("exclude_patterns"),
@@ -455,6 +478,61 @@ class SegmentService:
             )
 
         raise api_error(400, "unsupported_split_strategy", "Unsupported segment split strategy", {"strategy": strategy})
+
+    def _normalize_regex_hierarchy_patterns(
+        self,
+        raw_patterns: Any,
+        *,
+        error_code: str,
+    ):
+        if not isinstance(raw_patterns, list) or not raw_patterns:
+            raise api_error(400, error_code, "regex_hierarchy split strategy requires patterns")
+
+        normalized: list[tuple[int, str] | dict[str, Any]] = []
+        for index, entry in enumerate(raw_patterns):
+            if isinstance(entry, dict):
+                level = entry.get("level")
+                pattern = entry.get("pattern")
+                custom_patterns = entry.get("custom_patterns")
+                if level is None or (pattern is None and custom_patterns is None):
+                    raise api_error(
+                        400,
+                        error_code,
+                        "Invalid regex_hierarchy pattern entry",
+                        {"index": index, "entry": entry},
+                    )
+                normalized.append(entry)
+                continue
+
+            if isinstance(entry, (list, tuple)) and len(entry) == 2:
+                level_raw, pattern_raw = entry
+                if not isinstance(pattern_raw, str) or not pattern_raw.strip():
+                    raise api_error(
+                        400,
+                        error_code,
+                        "Invalid regex_hierarchy pattern entry",
+                        {"index": index, "entry": entry},
+                    )
+                try:
+                    level = int(level_raw)
+                except (TypeError, ValueError) as exc:
+                    raise api_error(
+                        400,
+                        error_code,
+                        "Invalid regex_hierarchy pattern entry",
+                        {"index": index, "entry": entry},
+                    ) from exc
+                normalized.append((level, pattern_raw))
+                continue
+
+            raise api_error(
+                400,
+                error_code,
+                "Invalid regex_hierarchy pattern entry",
+                {"index": index, "entry": entry},
+            )
+
+        return normalized
 
     def _resolve_length_function(self, params: dict[str, Any], *, error_code: str) -> Callable[[str], int]:
         mode = str(params.get("length_mode", "string_len")).strip().lower()

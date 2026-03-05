@@ -1,5 +1,10 @@
+import time
+
 from examples.api_client import ApiClientError
 from examples.example_utils import default_client, docs_path, export_results_json, print_api_error, print_kv, print_section, project_name
+
+GRAPH_POLL_INTERVAL_SECONDS = 2.0
+GRAPH_MAX_WAIT_SECONDS = 900.0
 
 
 def _graph_strategy(graph_build_id: str, mode: str) -> dict:
@@ -68,6 +73,31 @@ def _graph_strategy(graph_build_id: str, mode: str) -> dict:
     }
 
 
+def _wait_for_job(api, job_id: str) -> dict:
+    started = time.monotonic()
+    while True:
+        job = api.get_job(job_id)
+        status = job.get("status")
+        if status == "succeeded":
+            return job
+        if status == "failed":
+            raise ApiClientError(
+                f"Graph job failed: {job_id}",
+                payload={"detail": {"code": "graph_job_failed", "message": job.get("error_message") or "unknown error"}},
+            )
+        if GRAPH_MAX_WAIT_SECONDS is not None and (time.monotonic() - started) > GRAPH_MAX_WAIT_SECONDS:
+            raise ApiClientError(
+                f"Graph job timed out: {job_id}",
+                payload={
+                    "detail": {
+                        "code": "graph_job_timeout",
+                        "message": f"Job did not finish within {GRAPH_MAX_WAIT_SECONDS:.0f} seconds",
+                    }
+                },
+            )
+        time.sleep(GRAPH_POLL_INTERVAL_SECONDS)
+
+
 def run_example(client=None):
     api = client or default_client()
     artifacts = {"example_id": "05-docx-graph", "title": "DOCX graph workflow", "status": "ok"}
@@ -102,19 +132,10 @@ def run_example(client=None):
         )
         section += 1
 
-        print_section(section, "Create segments")
-        seg = api.create_segments(artifacts["document_set_version_id"], split_strategy="identity")
-        artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
-        print_kv(
-            "Segments created",
-            {"segment_set_version_id": artifacts["segment_set_version_id"], "items": len(seg["items"])},
-        )
-        section += 1
-
-        print_section(section, "Create chunks (regex hierarchy)")
-        chunk = api.split_segment_set(
-            artifacts["segment_set_version_id"],
-            strategy="regex_hierarchy",
+        print_section(section, "Create segments (regex hierarchy)")
+        seg = api.create_segments(
+            artifacts["document_set_version_id"],
+            split_strategy="regex_hierarchy",
             splitter_params={
                 "patterns": [
                     [1, r"^\s*#\s+(.+)$"],
@@ -126,6 +147,23 @@ def run_example(client=None):
                 "include_parent_content": False,
             },
         )
+        artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
+        print_kv(
+            "Segments created",
+            {"segment_set_version_id": artifacts["segment_set_version_id"], "items": len(seg["items"])},
+        )
+        section += 1
+
+        print_section(section, "Create chunks (recursive for index)")
+        chunk = api.split_segment_set(
+            artifacts["segment_set_version_id"],
+            strategy="recursive",
+            splitter_params={
+                "chunk_size": 900,
+                "chunk_overlap": 120,
+                "length_mode": "string_len",
+            },
+        )
         artifacts["source_set_id"] = chunk["segment_set"]["segment_set_version_id"]
         print_kv(
             "Chunks created",
@@ -133,16 +171,42 @@ def run_example(client=None):
         )
         section += 1
 
-        print_section(section, "Create graph build")
+        print_section(section, "Create index and build")
+        idx = api.create_index(
+            artifacts["project_id"],
+            "05_docx_graph",
+            provider="chroma",
+            config={"embedding_provider": "openai", "embedding_model_name": "text-embedding-3-small"},
+        )
+        artifacts["index_id"] = idx["index_id"]
+        build = api.create_index_build(artifacts["index_id"], artifacts["source_set_id"], execution_mode="sync")
+        artifacts["index_build_id"] = build["build"]["build_id"]
+        print_kv(
+            "Index build completed",
+            {"index_id": artifacts["index_id"], "index_build_id": artifacts["index_build_id"]},
+        )
+        section += 1
+
+        print_section(section, "Create graph build (async)")
         gb = api.create_graph_build(
             artifacts["project_id"],
             source_type="segment_set",
-            source_id=artifacts["source_set_id"],
+            source_id=artifacts["segment_set_version_id"],
             backend="networkx",
-            execution_mode="sync",
-            params={"extract_entities": True, "llm_provider": "openai", "llm_model": "gpt-4.1-nano", "llm_temperature": 0},
+            execution_mode="async",
+            params={
+                "extract_entities": True,
+                "llm_provider": "openai",
+                "llm_model": "gpt-4.1-nano",
+                "llm_temperature": 0,
+                "index_build_id": artifacts["index_build_id"],
+            },
         )
+        artifacts["graph_job_id"] = gb.get("job_id")
         artifacts["graph_build_id"] = gb["build"]["graph_build_id"]
+        print_kv("Graph build queued", {"graph_build_id": artifacts["graph_build_id"], "graph_job_id": artifacts["graph_job_id"]})
+        if artifacts["graph_job_id"]:
+            _wait_for_job(api, artifacts["graph_job_id"])
         print_kv("Graph build completed", {"graph_build_id": artifacts["graph_build_id"]})
         section += 1
 
@@ -162,8 +226,7 @@ def run_example(client=None):
                     },
                 )
                 run_ids.append(retrieval.get("run_id"))
-                safe_query = query.encode("unicode_escape").decode("ascii")
-                print_kv("Retrieved", {"mode": mode, "query": safe_query, "total": retrieval["total"], "run_id": retrieval.get("run_id")})
+                print_kv("Retrieved", {"mode": mode, "query": query, "total": retrieval["total"], "run_id": retrieval.get("run_id")})
                 section += 1
 
         artifacts["retrieval_run_ids"] = run_ids

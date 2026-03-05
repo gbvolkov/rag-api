@@ -37,6 +37,7 @@ EXAMPLE_FILES = [
 class _LocalApiClient:
     def __init__(self, client):
         self.client = client
+        self._jobs: dict[str, dict[str, Any]] = {}
 
     def _request(self, method: str, path: str, **kwargs):
         resp = self.client.request(method, f"/api/v1{path}", **kwargs)
@@ -157,16 +158,73 @@ class _LocalApiClient:
         )
 
     def create_graph_build(self, project_id: str, source_type: str, source_id: str, execution_mode: str = "sync", backend: str = "networkx", params: dict[str, Any] | None = None):
-        payload = {"source_type": source_type, "source_id": source_id, "backend": backend, "execution_mode": execution_mode, "extract_entities": False, "detect_communities": False, "summarize_communities": False}
-        if params:
-            payload.update(params)
+        payload: dict[str, Any] = {
+            "source_type": source_type,
+            "source_id": source_id,
+            "backend": backend,
+            "execution_mode": execution_mode,
+            "extract_entities": False,
+            "detect_communities": False,
+            "summarize_communities": False,
+            "params": {},
+        }
+        extra = dict(params or {})
+        top_level_fields = {
+            "extract_entities",
+            "detect_communities",
+            "summarize_communities",
+            "llm_provider",
+            "llm_model",
+            "llm_temperature",
+            "search_depth",
+        }
+        for key in top_level_fields:
+            if key in extra:
+                payload[key] = extra.pop(key)
+
+        nested = extra.pop("params", None)
+        if isinstance(nested, dict):
+            payload["params"].update(nested)
+        if extra:
+            payload["params"].update(extra)
+        if payload.get("execution_mode") == "async":
+            sync_payload = {**payload, "execution_mode": "sync"}
+            sync_result = self._request("POST", f"/projects/{project_id}/graph/builds", json=sync_payload)
+            job_id = f"local-graph-job-{len(self._jobs) + 1}"
+            graph_build_id = sync_result.get("build", {}).get("graph_build_id")
+            self._jobs[job_id] = {
+                "job_id": job_id,
+                "status": "succeeded",
+                "result": {"graph_build_id": graph_build_id, "status": "succeeded"},
+                "error_message": None,
+            }
+            return {"mode": "async", "job_id": job_id, "build": sync_result.get("build", {})}
         return self._request("POST", f"/projects/{project_id}/graph/builds", json=payload)
 
     def run_raptor(self, segment_set_id: str, payload: dict[str, Any]):
         return self._request("POST", f"/segment_sets/{segment_set_id}/raptor", json=payload)
 
     def run_enrich(self, segment_set_id: str, payload: dict[str, Any]):
+        if payload.get("execution_mode") == "async":
+            sync_payload = {**payload, "execution_mode": "sync"}
+            sync_result = self._request("POST", f"/segment_sets/{segment_set_id}/enrich", json=sync_payload)
+            job_id = f"local-enrich-job-{len(self._jobs) + 1}"
+            self._jobs[job_id] = {
+                "job_id": job_id,
+                "status": "succeeded",
+                "result": {
+                    "segment_set_version_id": sync_result["segment_set"]["segment_set_version_id"],
+                    "status": "succeeded",
+                },
+                "error_message": None,
+            }
+            return {"mode": "async", "job_id": job_id}
         return self._request("POST", f"/segment_sets/{segment_set_id}/enrich", json=payload)
+
+    def get_job(self, job_id: str):
+        if job_id in self._jobs:
+            return self._jobs[job_id]
+        return self._request("GET", f"/jobs/{job_id}")
 
     def list_raptor_runs(self, project_id: str):
         return self._request("GET", f"/projects/{project_id}/raptor_runs")

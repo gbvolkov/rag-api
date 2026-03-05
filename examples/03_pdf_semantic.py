@@ -2,10 +2,11 @@ from examples.api_client import ApiClientError
 from examples.example_utils import default_client, docs_path, export_results_json, print_api_error, print_kv, print_section, project_name
 
 DOC_PAGE_LIMIT = 10
+EXAMPLE_TIMEOUT_SECONDS = 600.0
 
 
 def run_example(client=None):
-    api = client or default_client()
+    api = client or default_client(timeout_seconds=EXAMPLE_TIMEOUT_SECONDS)
     artifacts = {"example_id": "03-pdf-semantic", "title": "PDF semantic workflow", "status": "ok"}
     section = 1
     try:
@@ -43,26 +44,13 @@ def run_example(client=None):
         )
         section += 1
 
-        print_section(section, "Create segments")
-        seg = api.create_segments(
-            artifacts["document_set_version_id"],
-            split_strategy="identity",
-        )
-        artifacts["used_loader"] = "pymupdf"
-        artifacts["segment_set_version_id"] = seg["segment_set"]["segment_set_version_id"]
-        print_kv(
-            "Segments created",
-            {"segment_set_version_id": artifacts["segment_set_version_id"], "items": len(seg["items"])},
-        )
-        section += 1
-
-        if DOC_PAGE_LIMIT and len(seg["items"]) > DOC_PAGE_LIMIT:
+        if DOC_PAGE_LIMIT and len(loaded["items"]) > DOC_PAGE_LIMIT:
             artifacts["doc_page_limit"] = DOC_PAGE_LIMIT
 
-        print_section(section, "Create structured chunks (regex_hierarchy)")
-        structured = api.split_segment_set(
-            artifacts["segment_set_version_id"],
-            strategy="regex_hierarchy",
+        print_section(section, "Create structured segments (regex_hierarchy)")
+        structured = api.create_segments(
+            artifacts["document_set_version_id"],
+            split_strategy="regex_hierarchy",
             splitter_params={
                 "patterns": [
                     [1, r"^\s*#\s+(.+)$"],
@@ -74,11 +62,16 @@ def run_example(client=None):
                 "include_parent_content": False,
             },
         )
+        artifacts["used_loader"] = "pymupdf"
         artifacts["structured_source_set_id"] = structured["segment_set"]["segment_set_version_id"]
         print_kv(
-            "Structured chunks created",
-            {"source_set_id": artifacts["structured_source_set_id"], "items": len(structured["items"])},
+            "Structured segments created",
+            {"segment_set_version_id": artifacts["structured_source_set_id"], "items": len(structured["items"])},
         )
+        if len(structured["items"]) <= 1:
+            raise RuntimeError(
+                "regex_hierarchy produced <= 1 segment; verify heading patterns match the loaded markdown content."
+            )
         section += 1
 
         print_section(section, "Create semantic chunks")

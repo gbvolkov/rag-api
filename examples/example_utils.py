@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -15,24 +16,46 @@ def print_section(index: int, title: str) -> None:
 
 
 def print_kv(title: str, data: dict[str, Any]) -> None:
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+
+    def _safe(value: Any) -> str:
+        text = str(value)
+        try:
+            text.encode(encoding)
+            return text
+        except UnicodeEncodeError:
+            return text.encode(encoding, errors="backslashreplace").decode(encoding, errors="ignore")
+
     print(title)
     for key, value in data.items():
-        print(f"  - {key}: {value}")
+        print(f"  - {key}: {_safe(value)}")
 
 
 def print_api_error(exc: ApiClientError) -> None:
-    detail = exc.payload.get("detail", {})
-    code = detail.get("code") or exc.payload.get("code")
-    message = detail.get("message") or exc.payload.get("message") or str(exc)
-    hint = detail.get("hint")
+    payload = exc.payload if isinstance(exc.payload, dict) else {}
+    detail = payload.get("detail")
+    if isinstance(detail, dict):
+        code = detail.get("code") or payload.get("code")
+        message = detail.get("message") or payload.get("message") or str(exc)
+        hint = detail.get("hint") or payload.get("hint")
+    else:
+        code = payload.get("code")
+        message = payload.get("message") or (detail if isinstance(detail, str) else None) or payload.get("raw") or str(exc)
+        hint = payload.get("hint")
     print(f"API error: code={code} status={exc.status_code} message={message}")
     if hint:
         print(f"Hint: {hint}")
+    raw = payload.get("raw")
+    if isinstance(raw, str) and raw.strip():
+        preview = raw.replace("\r", " ").replace("\n", " ")
+        if len(preview) > 400:
+            preview = preview[:400] + "..."
+        print(f"Raw response: {preview}")
 
 
-def default_client() -> ApiClient:
-    base = os.getenv("RAG_API_BASE_URL", "http://localhost:8000/api/v1")
-    timeout = float(os.getenv("RAG_API_TIMEOUT_SECONDS", "120"))
+def default_client(timeout_seconds: float | None = None) -> ApiClient:
+    base = os.getenv("RAG_API_BASE_URL", "http://127.0.0.1:8000/api/v1")
+    timeout = timeout_seconds if timeout_seconds is not None else float(os.getenv("RAG_API_TIMEOUT_SECONDS", "120"))
     return ApiClient(base_url=base, timeout_seconds=timeout)
 
 

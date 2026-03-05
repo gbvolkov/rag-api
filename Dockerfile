@@ -3,7 +3,8 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    NLTK_DATA=/usr/local/share/nltk_data
 
 WORKDIR /app
 
@@ -30,6 +31,22 @@ PY
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --upgrade pip \
     && python -m pip install -r requirements.docker.txt
+
+RUN python - <<'PY'
+import importlib.util
+
+if importlib.util.find_spec("nltk") is None:
+    print("nltk is not installed; skipping tokenizer bootstrap")
+    raise SystemExit(0)
+
+import nltk
+
+download_dir = "/usr/local/share/nltk_data"
+for resource in ("punkt", "punkt_tab"):
+    ok = nltk.download(resource, download_dir=download_dir, quiet=True)
+    if not ok:
+        raise RuntimeError(f"Failed to download NLTK resource: {resource}")
+PY
 
 COPY app ./app
 COPY main.py ./main.py

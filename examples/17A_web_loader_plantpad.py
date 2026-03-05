@@ -11,6 +11,8 @@ CLEANUP_CONFIG = {
     "navigation_texts": ["<", ">"],
     "ignored_classes": ["header"],
 }
+RECURSIVE_SPLITTER_PARAMS = {"chunk_size": 1200, "chunk_overlap": 120}
+
 PLANTPAD_SEED_SCRIPT = """
 async ({ keyword }) => {
   const current = new URL(window.location.href);
@@ -37,6 +39,7 @@ async ({ keyword }) => {
   return true;
 }
 """
+
 PLANTPAD_EXTRACT_SCRIPT = """
 () => {
   const current = new URL(window.location.href);
@@ -53,6 +56,7 @@ PLANTPAD_EXTRACT_SCRIPT = """
   return urls;
 }
 """
+
 PLANTPAD_NEXT_PAGE_SCRIPT = """
 () => {
   const current = new URL(window.location.href);
@@ -87,6 +91,35 @@ def _playwright_extraction_config() -> dict:
     }
 
 
+def _sync_loader_params() -> dict:
+    return {
+        "url": TARGET_URL,
+        "depth": 3,
+        "output_format": "markdown",
+        "fetch_mode": "playwright",
+        "crawl_scope": "same_host",
+        "follow_download_links": False,
+        "cleanup_config": CLEANUP_CONFIG,
+        "playwright_visible": True,
+        "playwright_navigation_config": {"enabled": True, "max_clicks": 512, "max_states": 513},
+        "playwright_extraction_config": _playwright_extraction_config(),
+    }
+
+
+def _async_loader_params() -> dict:
+    params = _sync_loader_params()
+    params["max_concurrency"] = 4
+    return params
+
+
+def _segment_preview(segment_items: list[dict]) -> dict:
+    if not segment_items:
+        return {"items": 0}
+
+    first = segment_items[0]
+    return {"items": len(segment_items), "content_preview": (first.get("content") or "")[:120]}
+
+
 def run_example(client=None):
     api = client or default_client()
     artifacts = {"example_id": "17A-web-loader-plantpad", "title": "Web loader plantpad workflow", "status": "ok"}
@@ -94,73 +127,51 @@ def run_example(client=None):
     try:
         print_section(section, "Create project")
         project = api.create_project(project_name("17A-web-loader-plantpad"), description=artifacts["title"])
-        artifacts["project_id"] = project["project_id"]
-        print_kv("Project created", {"project_id": artifacts["project_id"]})
+        project_id = project["project_id"]
+        artifacts["project_id"] = project_id
+        print_kv("Project created", {"project_id": project_id})
         section += 1
 
         print_section(section, "Load URL documents (sync web)")
-        loaded_sync = api.load_documents_from_url(
-            artifacts["project_id"],
-            loader_type="web",
-            loader_params={
-                "url": TARGET_URL,
-                "depth": 3,
-                "output_format": "markdown",
-                "fetch_mode": "playwright",
-                "crawl_scope": "same_host",
-                "follow_download_links": False,
-                "cleanup_config": CLEANUP_CONFIG,
-                "playwright_visible": True,
-                "playwright_navigation_config": {"enabled": True, "max_clicks": 512, "max_states": 513},
-                "playwright_extraction_config": _playwright_extraction_config(),
-            },
-        )
-        artifacts["document_set_version_id"] = loaded_sync["document_set"]["document_set_version_id"]
+        loaded_sync = api.load_documents_from_url(project_id, loader_type="web", loader_params=_sync_loader_params())
+        sync_document_set_version_id = loaded_sync["document_set"]["document_set_version_id"]
+        artifacts["document_set_version_id"] = sync_document_set_version_id
         seg_sync = api.create_segments(
-            artifacts["document_set_version_id"],
-            split_strategy="identity",
+            sync_document_set_version_id,
+            split_strategy="recursive",
+            splitter_params=RECURSIVE_SPLITTER_PARAMS,
         )
-        artifacts["segment_set_version_id"] = seg_sync["segment_set"]["segment_set_version_id"]
+        sync_segment_set_version_id = seg_sync["segment_set"]["segment_set_version_id"]
+        artifacts["segment_set_version_id"] = sync_segment_set_version_id
         print_kv(
             "URL segments created",
             {
-                "document_set_version_id": artifacts["document_set_version_id"],
-                "segment_set_version_id": artifacts["segment_set_version_id"],
-                "items": len(seg_sync["items"]),
+                "document_set_version_id": sync_document_set_version_id,
+                "document_items": len(loaded_sync["items"]),
+                "segment_set_version_id": sync_segment_set_version_id,
+                **_segment_preview(seg_sync["items"]),
             },
         )
         section += 1
 
         print_section(section, "Load URL documents (async web)")
-        loaded_async = api.load_documents_from_url(
-            artifacts["project_id"],
-            loader_type="web_async",
-            loader_params={
-                "url": TARGET_URL,
-                "depth": 3,
-                "output_format": "markdown",
-                "fetch_mode": "playwright",
-                "crawl_scope": "same_host",
-                "follow_download_links": False,
-                "max_concurrency": 4,
-                "cleanup_config": CLEANUP_CONFIG,
-                "playwright_visible": True,
-                "playwright_navigation_config": {"enabled": True, "max_clicks": 512, "max_states": 513},
-                "playwright_extraction_config": _playwright_extraction_config(),
-            },
-        )
-        artifacts["async_document_set_version_id"] = loaded_async["document_set"]["document_set_version_id"]
+        loaded_async = api.load_documents_from_url(project_id, loader_type="web_async", loader_params=_async_loader_params())
+        async_document_set_version_id = loaded_async["document_set"]["document_set_version_id"]
+        artifacts["async_document_set_version_id"] = async_document_set_version_id
         seg_async = api.create_segments(
-            artifacts["async_document_set_version_id"],
-            split_strategy="identity",
+            async_document_set_version_id,
+            split_strategy="recursive",
+            splitter_params=RECURSIVE_SPLITTER_PARAMS,
         )
-        artifacts["async_segment_set_version_id"] = seg_async["segment_set"]["segment_set_version_id"]
+        async_segment_set_version_id = seg_async["segment_set"]["segment_set_version_id"]
+        artifacts["async_segment_set_version_id"] = async_segment_set_version_id
         print_kv(
             "URL segments created",
             {
-                "document_set_version_id": artifacts["async_document_set_version_id"],
-                "segment_set_version_id": artifacts["async_segment_set_version_id"],
-                "items": len(seg_async["items"]),
+                "document_set_version_id": async_document_set_version_id,
+                "document_items": len(loaded_async["items"]),
+                "segment_set_version_id": async_segment_set_version_id,
+                **_segment_preview(seg_async["items"]),
             },
         )
         section += 1

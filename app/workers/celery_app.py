@@ -18,3 +18,7 @@ if hasattr(celery_app, "conf") and hasattr(celery_app.conf, "update"):
         enable_utc=True,
         result_expires=settings.celery_result_expires_seconds,
     )
+
+# Ensure task decorators execute when the worker boots with
+# `-A app.workers.celery_app.celery_app`.
+from app.workers import tasks as _tasks  # noqa: F401,E402

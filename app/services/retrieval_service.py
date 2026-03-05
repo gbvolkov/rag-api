@@ -199,14 +199,6 @@ class RetrievalService:
         score_threshold: float | None,
         metadata_filter: dict[str, Any] | None,
     ) -> BaseRetriever:
-        if metadata_filter:
-            raise api_error(
-                400,
-                "unsupported_strategy_param",
-                "strategy.filter is not supported by rag_lib create_vector_retriever",
-                {"field": "strategy.filter", "strategy": "vector"},
-            )
-
         from rag_lib.retrieval.retrievers import create_vector_retriever
 
         vector_store = self._load_materialized_vector_store(index_row)
@@ -216,13 +208,19 @@ class RetrievalService:
                 top_k=k,
                 search_type=search_type,
                 score_threshold=score_threshold,
+                filter=metadata_filter,
             )
         except Exception as exc:
             raise api_error(
                 400,
                 "invalid_vector_strategy",
                 "Failed to initialize vector retriever with provided strategy parameters",
-                {"search_type": search_type, "score_threshold": score_threshold, "error": str(exc)},
+                {
+                    "search_type": search_type,
+                    "score_threshold": score_threshold,
+                    "filter": metadata_filter,
+                    "error": str(exc),
+                },
             ) from exc
 
     def _get_embeddings(self, index_row: Index):

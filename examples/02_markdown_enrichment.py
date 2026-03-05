@@ -1,7 +1,36 @@
+import time
+
 from examples.api_client import ApiClientError
 from examples.example_utils import default_client, docs_path, export_results_json, print_api_error, print_kv, print_section, project_name
 
 ENRICH_SEGMENT_LIMIT = 5
+ENRICH_POLL_INTERVAL_SECONDS = 2.0
+ENRICH_MAX_WAIT_SECONDS = None
+
+
+def _wait_for_job(api, job_id: str) -> dict:
+    started = time.monotonic()
+    while True:
+        job = api.get_job(job_id)
+        status = job.get("status")
+        if status == "succeeded":
+            return job
+        if status == "failed":
+            raise ApiClientError(
+                f"Enrichment job failed: {job_id}",
+                payload={"detail": {"code": "enrich_job_failed", "message": job.get("error_message") or "unknown error"}},
+            )
+        if ENRICH_MAX_WAIT_SECONDS is not None and (time.monotonic() - started) > ENRICH_MAX_WAIT_SECONDS:
+            raise ApiClientError(
+                f"Enrichment job timed out: {job_id}",
+                payload={
+                    "detail": {
+                        "code": "enrich_job_timeout",
+                        "message": f"Job did not finish within {ENRICH_MAX_WAIT_SECONDS:.0f} seconds",
+                    }
+                },
+            )
+        time.sleep(ENRICH_POLL_INTERVAL_SECONDS)
 
 
 def run_example(client=None):
@@ -62,11 +91,21 @@ def run_example(client=None):
         print_section(section, "Run enrichment")
         enr = api.run_enrich(
             artifacts["source_set_id"],
-            {"execution_mode": "sync", "llm_provider": "openai", "llm_model": "gpt-4.1-nano"},
+            {"execution_mode": "async", "llm_provider": "openai", "llm_model": "gpt-4.1-nano"},
         )
-        artifacts["source_set_id"] = enr["segment_set"]["segment_set_version_id"]
+        artifacts["enrich_job_id"] = enr["job_id"]
+        job = _wait_for_job(api, artifacts["enrich_job_id"])
+        result = job.get("result") or {}
+        artifacts["source_set_id"] = result["segment_set_version_id"]
         artifacts["segment_set_version_id"] = artifacts["source_set_id"]
-        print_kv("Enrichment completed", {"source_set_id": artifacts["source_set_id"]})
+        print_kv(
+            "Enrichment completed",
+            {
+                "job_id": artifacts["enrich_job_id"],
+                "source_set_id": artifacts["source_set_id"],
+                "status": job.get("status"),
+            },
+        )
         section += 1
 
         print_section(section, "Retrieve (fuzzy)")
