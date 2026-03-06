@@ -89,6 +89,28 @@ class _LocalApiClient:
             },
         )
 
+    def submit_load_documents_from_url(
+        self,
+        project_id: str,
+        loader_type: str | None = None,
+        loader_params: dict[str, Any] | None = None,
+    ):
+        loaded = self.load_documents_from_url(project_id, loader_type=loader_type, loader_params=loader_params)
+        job_id = f"local-url-load-job-{len(self._jobs) + 1}"
+        document_set = loaded.get("document_set") or {}
+        self._jobs[job_id] = {
+            "job_id": job_id,
+            "status": "succeeded",
+            "result": {
+                "document_set_version_id": document_set.get("document_set_version_id"),
+                "project_id": project_id,
+                "total_items": len(loaded.get("items") or []),
+                "status": "succeeded",
+            },
+            "error_message": None,
+        }
+        return {"mode": "async", "job_id": job_id, "status": "queued"}
+
     def create_segments(
         self,
         document_set_version_id: str,

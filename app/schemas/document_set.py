@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -50,3 +50,19 @@ class LoadDocumentsFromUrlRequest(BaseModel):
         description="Optional URL-loader override. Allowed: web|web_async by policy.",
     )
     loader_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class LoadDocumentsFromUrlSubmitRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    loader_type: str | None = Field(
+        default=None,
+        description="Optional URL-loader override. Allowed: web|web_async by policy.",
+    )
+    loader_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class LoadDocumentsFromUrlSubmitResponse(BaseModel):
+    mode: Literal["async"] = "async"
+    job_id: str
+    status: Literal["queued"] = "queued"

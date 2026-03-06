@@ -4,6 +4,7 @@ from app.db.session import SessionLocal
 from app.schemas.pipeline import PipelineRequestMeta
 from app.services.index_service import IndexService
 from app.services.job_service import JobService
+from app.services.document_load_service import DocumentLoadService
 from app.services.graph_service import GraphService
 from app.services.pipeline_service import PipelineService
 from app.services.segment_service import SegmentService
@@ -69,6 +70,39 @@ def run_pipeline(
                 "document_set_version_id": result["document_set"].document_set_version_id,
                 "segment_set_version_id": result["segment_set"].segment_set_version_id,
                 "index_build_id": result["index_build"].build_id if result["index_build"] else None,
+            }
+            await _update_job(job_id, "succeeded", result=payload)
+            return payload
+
+    try:
+        return asyncio.run(_run())
+    except Exception as exc:
+        asyncio.run(_update_job(job_id, "failed", error=str(exc)))
+        raise
+
+
+@celery_app.task(name="app.workers.tasks.run_document_load_from_url")
+def run_document_load_from_url(
+    job_id: str,
+    project_id: str,
+    loader_type: str | None,
+    loader_params: dict | None,
+) -> dict:
+    async def _run() -> dict:
+        await _update_job(job_id, "running")
+        async with SessionLocal() as session:
+            svc = DocumentLoadService(session)
+            document_set = await svc.load_from_url(
+                project_id=project_id,
+                loader_type=loader_type,
+                loader_params=loader_params or {},
+            )
+            total_items = await svc.count_items(document_set.document_set_version_id)
+            payload = {
+                "document_set_version_id": document_set.document_set_version_id,
+                "project_id": document_set.project_id,
+                "total_items": total_items,
+                "status": "succeeded",
             }
             await _update_job(job_id, "succeeded", result=payload)
             return payload

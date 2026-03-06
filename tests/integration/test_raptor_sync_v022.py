@@ -53,7 +53,7 @@ def test_raptor_sync_persists_raptor_run(client, monkeypatch):
         json={
             "execution_mode": "sync",
             "max_levels": 2,
-            "embedding_provider": "mock",
+            "embedding_provider": "openai",
         },
     )
     assert resp.status_code == 200, resp.text

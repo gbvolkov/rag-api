@@ -107,6 +107,25 @@ def _as_list(payload: Any) -> list[Any]:
     return []
 
 
+def _normalize_document_set_item(
+    document_set: dict[str, Any],
+    item: dict[str, Any],
+) -> dict[str, Any]:
+    input_refs = document_set.get("input_refs")
+    input_refs = input_refs if isinstance(input_refs, dict) else {}
+    return {
+        "document_set_version_id": document_set.get("document_set_version_id"),
+        "project_id": document_set.get("project_id"),
+        "document_version_id": document_set.get("document_version_id"),
+        "source_url": input_refs.get("url"),
+        "item_id": item.get("item_id"),
+        "position": item.get("position"),
+        "content": item.get("content"),
+        "metadata": item.get("metadata"),
+        "original_format": item.get("original_format"),
+    }
+
+
 def _list_project_artifacts(api: Any, project_id: str, warnings: list[dict[str, Any]]) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     cursor: str | None = None
@@ -170,6 +189,34 @@ def export_results_json(api: Any, project_id: str, example_id: str) -> list[Path
     if warning:
         warnings.append(warning)
     documents = _as_list(documents)
+
+    document_set_summaries, warning = _api_get_optional(api, f"/projects/{project_id}/document_sets", default=[])
+    if warning:
+        warnings.append(warning)
+    document_set_summaries = _as_list(document_set_summaries)
+
+    document_set_details: list[dict[str, Any]] = []
+    document_set_items: list[dict[str, Any]] = []
+    for summary in document_set_summaries:
+        if not isinstance(summary, dict):
+            continue
+        document_set_id = summary.get("document_set_version_id")
+        if not document_set_id:
+            continue
+        detail, warning = _api_get_optional(api, f"/document_sets/{document_set_id}", default=None)
+        if warning:
+            warnings.append(warning)
+            continue
+        if not isinstance(detail, dict):
+            continue
+        document_set_details.append(detail)
+        document_set = detail.get("document_set")
+        items = detail.get("items")
+        if not isinstance(document_set, dict) or not isinstance(items, list):
+            continue
+        for item in items:
+            if isinstance(item, dict):
+                document_set_items.append(_normalize_document_set_item(document_set, item))
 
     document_versions: dict[str, list[dict[str, Any]]] = {}
     for doc in documents:
@@ -298,8 +345,11 @@ def export_results_json(api: Any, project_id: str, example_id: str) -> list[Path
 
     artifacts = _list_project_artifacts(api, project_id, warnings)
 
+    documents_like = documents if documents else document_set_items
+
     legacy_files = [
-        (f"{example_id}_documents_{timestamp}.json", documents),
+        (f"{example_id}_documents_{timestamp}.json", documents_like),
+        (f"{example_id}_document_set_items_{timestamp}.json", document_set_items),
         (f"{example_id}_segments_{timestamp}.json", segment_set_details),
         (f"{example_id}_retrieval_results_{timestamp}.json", retrieval_results),
     ]
@@ -314,7 +364,16 @@ def export_results_json(api: Any, project_id: str, example_id: str) -> list[Path
 
     _write_bundle_json(bundle_dir, "project.json", project, written_paths)
     _write_bundle_json(bundle_dir, "documents.json", documents, written_paths)
+    _write_bundle_json(bundle_dir, "documents_like.json", documents_like, written_paths)
     _write_bundle_json(bundle_dir, "document_versions.json", document_versions, written_paths)
+    _write_bundle_json(bundle_dir, "document_sets/index.json", document_set_summaries, written_paths)
+    _write_bundle_json(bundle_dir, "document_sets/all_details.json", document_set_details, written_paths)
+    _write_bundle_json(bundle_dir, "document_sets/all_items.json", document_set_items, written_paths)
+    for idx, detail in enumerate(document_set_details, start=1):
+        document_set = detail.get("document_set", {}) if isinstance(detail, dict) else {}
+        document_set_id = document_set.get("document_set_version_id") if isinstance(document_set, dict) else None
+        slug = str(document_set_id or f"unknown_{idx}")
+        _write_bundle_json(bundle_dir, f"document_sets/{idx:03d}_{slug}.json", detail, written_paths)
     _write_bundle_json(bundle_dir, "segment_sets/index.json", segment_set_summaries, written_paths)
     _write_bundle_json(bundle_dir, "segment_sets/by_document_version.json", segment_sets_by_document_version, written_paths)
     _write_bundle_json(bundle_dir, "segment_sets/all_details.json", segment_set_details, written_paths)
@@ -367,7 +426,11 @@ def export_results_json(api: Any, project_id: str, example_id: str) -> list[Path
         "bundle_dir": str(bundle_dir),
         "counts": {
             "documents": len(documents),
+            "documents_like": len(documents_like),
             "document_versions": sum(len(v) for v in document_versions.values()),
+            "document_set_summaries": len(document_set_summaries),
+            "document_set_details": len(document_set_details),
+            "document_set_items": len(document_set_items),
             "segment_set_summaries": len(segment_set_summaries),
             "segment_set_details": len(segment_set_details),
             "retrieval_runs": len(retrieval_runs),

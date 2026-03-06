@@ -1,6 +1,26 @@
 import io
 
+import pytest
 from langchain_core.documents import Document as LCDocument
+
+
+class _DummyEmbeddings:
+    def __call__(self, text):
+        return self.embed_query(text)
+
+    def embed_documents(self, texts):
+        return [[float((idx % 7) + 1)] * 8 for idx, _ in enumerate(texts)]
+
+    def embed_query(self, text):
+        return [0.5] * 8
+
+
+@pytest.fixture(autouse=True)
+def _stub_embeddings_factory(monkeypatch):
+    monkeypatch.setattr(
+        "rag_lib.embeddings.factory.create_embeddings_model",
+        lambda provider, model_name=None: _DummyEmbeddings(),
+    )
 
 
 def _create_project(client, name: str) -> str:
@@ -48,7 +68,7 @@ def test_example_01_text_workflow_e2e_api_only(client):
 
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
-        json={"name": "ex01-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
+        json={"name": "ex01-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "openai"}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
@@ -80,7 +100,7 @@ def test_example_03_graph_workflow_api_only(client, monkeypatch):
 
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
-        json={"name": "ex03-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
+        json={"name": "ex03-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "openai"}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]
@@ -151,7 +171,7 @@ def test_example_02_raptor_workflow_api_only(client, monkeypatch):
 
     resp = client.post(
         f"/api/v1/segment_sets/{segment_set_id}/raptor",
-        json={"execution_mode": "sync", "max_levels": 3, "embedding_provider": "mock"},
+        json={"execution_mode": "sync", "max_levels": 3, "embedding_provider": "openai"},
     )
     assert resp.status_code == 200, resp.text
     out_set_id = resp.json()["segment_set"]["segment_set_version_id"]
@@ -171,7 +191,7 @@ def test_example_13_dual_storage_api_only(client):
 
     idx = client.post(
         f"/api/v1/projects/{project_id}/indexes",
-        json={"name": "ex13-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "mock"}, "params": {}},
+        json={"name": "ex13-faiss", "provider": "faiss", "index_type": "segment_vectors", "config": {"embedding_provider": "openai"}, "params": {}},
     )
     assert idx.status_code == 200, idx.text
     index_id = idx.json()["index_id"]

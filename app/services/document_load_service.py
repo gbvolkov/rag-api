@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import os
 import tempfile
@@ -130,6 +131,9 @@ class DocumentLoadService:
             requested_loader_type=loader_type,
             requested_loader_params=requested_params,
         )
+        # API policy: Playwright must always run headless in server environments.
+        resolved_loader_params["playwright_headless"] = True
+        resolved_loader_params["playwright_visible"] = False
         docs, stats, errors = await self._load_from_url_params(
             loader_type=resolved_loader_type,
             loader_params=resolved_loader_params,
@@ -419,7 +423,7 @@ class DocumentLoadService:
                 follow_download_links=bool(loader_params.get("follow_download_links", False)),
                 request_timeout_seconds=float(loader_params.get("request_timeout_seconds", 20.0)),
                 playwright_timeout_ms=int(loader_params.get("playwright_timeout_ms", 30000)),
-                playwright_headless=bool(loader_params.get("playwright_headless", True)),
+                playwright_headless=True,
                 ignore_https_errors=bool(loader_params.get("ignore_https_errors", False)),
                 user_agent=loader_params.get("user_agent", "rag-lib-webloader/1.0"),
                 max_pages=loader_params.get("max_pages"),
@@ -427,11 +431,13 @@ class DocumentLoadService:
                 continue_on_error=bool(loader_params.get("continue_on_error", True)),
                 login_url=loader_params.get("login_url"),
                 cleanup_config=cleanup_config,
-                playwright_visible=loader_params.get("playwright_visible"),
+                playwright_visible=False,
                 playwright_extraction_config=playwright_extraction_config,
                 playwright_navigation_config=playwright_navigation_config,
             )
-            documents = loader.load()
+            # WebLoader is synchronous and may use Playwright sync API; run it off the
+            # FastAPI event-loop thread to avoid "sync API inside asyncio loop" failures.
+            documents = await asyncio.to_thread(loader.load)
             return list(documents or []), dict(loader.last_stats or {}), list(loader.last_errors or [])
 
         from rag_lib.loaders.web_async import AsyncWebLoader
@@ -446,7 +452,7 @@ class DocumentLoadService:
             follow_download_links=bool(loader_params.get("follow_download_links", False)),
             request_timeout_seconds=float(loader_params.get("request_timeout_seconds", 20.0)),
             playwright_timeout_ms=int(loader_params.get("playwright_timeout_ms", 30000)),
-            playwright_headless=bool(loader_params.get("playwright_headless", True)),
+            playwright_headless=True,
             ignore_https_errors=bool(loader_params.get("ignore_https_errors", False)),
             user_agent=loader_params.get("user_agent", "rag-lib-webloader/1.0"),
             max_pages=loader_params.get("max_pages"),
@@ -455,7 +461,7 @@ class DocumentLoadService:
             continue_on_error=bool(loader_params.get("continue_on_error", True)),
             login_url=loader_params.get("login_url"),
             cleanup_config=cleanup_config,
-            playwright_visible=loader_params.get("playwright_visible"),
+            playwright_visible=False,
             playwright_extraction_config=playwright_extraction_config,
             playwright_navigation_config=playwright_navigation_config,
         )

@@ -2,6 +2,27 @@ import io
 import types
 import sys
 
+import pytest
+
+
+class _DummyEmbeddings:
+    def __call__(self, text):
+        return self.embed_query(text)
+
+    def embed_documents(self, texts):
+        return [[float((idx % 7) + 1)] * 8 for idx, _ in enumerate(texts)]
+
+    def embed_query(self, text):
+        return [0.5] * 8
+
+
+@pytest.fixture(autouse=True)
+def _stub_embeddings_factory(monkeypatch):
+    monkeypatch.setattr(
+        "rag_lib.embeddings.factory.create_embeddings_model",
+        lambda provider, model_name=None: _DummyEmbeddings(),
+    )
+
 
 def _create_project(client, name: str) -> str:
     resp = client.post("/api/v1/projects", json={"name": name, "settings": {}})
@@ -48,7 +69,7 @@ def _create_index(client, project_id: str, name: str) -> str:
             "name": name,
             "provider": "faiss",
             "index_type": "segment_vectors",
-            "config": {"embedding_provider": "mock"},
+            "config": {"embedding_provider": "openai"},
             "params": {},
         },
     )

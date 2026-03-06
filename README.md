@@ -738,7 +738,7 @@ Request body (`CreateIndexRequest`):
 
 | Key | Type | Scope | Required | Default | Notes |
 |---|---|---|---|---|---|
-| `embedding_provider` | string | all providers | no | `mock` | embedding provider |
+| `embedding_provider` | string | all providers | no | `openai` | embedding provider |
 | `embedding_model_name` | string \| null | all providers | no | `null` | embedding model |
 | `collection_name` | string | qdrant/chroma/postgres | no | generated | backend collection name |
 | `faiss_local_dir` | string | faiss | no | generated after build | usually produced by build |
@@ -1531,8 +1531,8 @@ Default is `chunk_vectors`. It is persisted as metadata; current build logic doe
 
 | Config field | Scope | Default | Notes |
 |---|---|---|---|
-| `embedding_provider` | all provider builds + vector retrieval | `mock` | `mock` uses deterministic mock embeddings |
-| `embedding_model_name` | all providers | `null` | forwarded to embedding factory when provider != `mock` |
+| `embedding_provider` | all provider builds + vector retrieval | `openai` | forwarded to rag-lib embedding factory |
+| `embedding_model_name` | all providers | `null` | forwarded to embedding factory |
 | `collection_name` | qdrant/chroma/postgres | generated `rag_api_<project_id>_<index_id>` | collection/table name used by rag-lib factory |
 | `faiss_local_dir` | faiss | generated during build | populated after successful FAISS build |
 | `connection` | postgres | from `VECTOR_POSTGRES_CONNECTION` | PGVector connection string |

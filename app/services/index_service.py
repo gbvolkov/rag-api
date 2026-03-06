@@ -462,16 +462,34 @@ class IndexService:
         }
 
     def _get_embeddings(self, index_row: Index):
-        provider = index_row.config_json.get("embedding_provider", "mock")
+        provider = index_row.config_json.get("embedding_provider", "openai")
         model_name = index_row.config_json.get("embedding_model_name")
-        if provider == "mock":
-            from rag_lib.embeddings.mock import MockEmbeddings
-
-            return MockEmbeddings()
 
         from rag_lib.embeddings.factory import create_embeddings_model
 
-        return create_embeddings_model(provider=provider, model_name=model_name)
+        try:
+            return create_embeddings_model(provider=provider, model_name=model_name)
+        except ValueError as exc:
+            raise api_error(
+                400,
+                "invalid_embedding_provider",
+                "Unsupported embedding provider",
+                {"provider": provider, "error": str(exc)},
+            ) from exc
+        except ImportError as exc:
+            raise api_error(
+                424,
+                "missing_dependency",
+                "Embedding provider dependency is not available",
+                {"provider": provider, "error": str(exc)},
+            ) from exc
+        except Exception as exc:
+            raise api_error(
+                424,
+                "embedding_provider_init_failed",
+                "Embedding provider initialization failed",
+                {"provider": provider, "model_name": model_name, "error": str(exc)},
+            ) from exc
 
     async def create_job(self, project_id: str, job_type: str, payload: dict) -> Job:
         job = Job(project_id=project_id, job_type=job_type, status="queued", payload_json=payload)

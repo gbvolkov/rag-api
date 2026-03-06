@@ -295,27 +295,39 @@ class GraphService:
             raise api_error(404, "index_not_found", "Index not found", {"index_id": build.index_id})
 
         embeddings = self._get_embeddings(
-            provider=index_row.config_json.get("embedding_provider", "mock"),
+            provider=index_row.config_json.get("embedding_provider", "openai"),
             model_name=index_row.config_json.get("embedding_model_name"),
         )
         return create_vector_store_for_retrieval(index_row=index_row, embeddings=embeddings)
 
     def _get_embeddings(self, provider: str, model_name: str | None):
-        if provider == "mock":
-            from rag_lib.embeddings.mock import MockEmbeddings
-
-            return MockEmbeddings()
+        provider_normalized = str(provider).strip().lower() if provider is not None else ""
+        provider_normalized = provider_normalized or "openai"
 
         from rag_lib.embeddings.factory import create_embeddings_model
 
         try:
-            return create_embeddings_model(provider=provider, model_name=model_name)
-        except Exception as exc:
+            return create_embeddings_model(provider=provider_normalized, model_name=model_name)
+        except ValueError as exc:
+            raise api_error(
+                400,
+                "invalid_embedding_provider",
+                "Unsupported embedding provider",
+                {"provider": provider_normalized, "error": str(exc)},
+            ) from exc
+        except ImportError as exc:
             raise api_error(
                 424,
                 "missing_dependency",
+                "Embedding provider dependency is not available",
+                {"provider": provider_normalized, "error": str(exc)},
+            ) from exc
+        except Exception as exc:
+            raise api_error(
+                424,
+                "embedding_provider_init_failed",
                 "Embedding provider initialization failed",
-                {"provider": provider, "model_name": model_name, "error": str(exc)},
+                {"provider": provider_normalized, "model_name": model_name, "error": str(exc)},
             ) from exc
 
     def _create_graph_store(self, backend: str | None):

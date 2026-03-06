@@ -33,7 +33,8 @@ dependencies = [
   "langchain-mistralai>=0.2.0",
   "neo4j>=5.27.0",
   "umap-learn>=0.5.7",
-  "rag-lib @ git+https://github.com/gbvolkov/rag-lib.git",
+  "rag-lib[miner-u] @ git+https://github.com/gbvolkov/rag-lib.git",
+  "magic-pdf>=0.6.1",
 ]
 
 [project.optional-dependencies]

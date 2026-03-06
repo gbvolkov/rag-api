@@ -453,17 +453,41 @@ class SegmentService:
             from rag_lib.chunkers.semantic import SemanticChunker
 
             provider = params.get("embedding_provider")
-            if provider == "mock":
-                from rag_lib.embeddings.mock import MockEmbeddings
+            provider_normalized = str(provider).strip().lower() if provider is not None else ""
+            provider_normalized = provider_normalized or None
 
-                embeddings = MockEmbeddings()
-            else:
-                from rag_lib.embeddings.factory import create_embeddings_model
+            from rag_lib.embeddings.factory import create_embeddings_model
 
+            try:
                 embeddings = create_embeddings_model(
-                    provider=provider,
+                    provider=provider_normalized,
                     model_name=params.get("embedding_model_name"),
                 )
+            except ValueError as exc:
+                raise api_error(
+                    400,
+                    "invalid_embedding_provider",
+                    "Unsupported embedding provider",
+                    {"provider": provider_normalized, "error": str(exc)},
+                ) from exc
+            except ImportError as exc:
+                raise api_error(
+                    424,
+                    "missing_dependency",
+                    "Embedding provider dependency is not available",
+                    {"provider": provider_normalized, "error": str(exc)},
+                ) from exc
+            except Exception as exc:
+                raise api_error(
+                    424,
+                    "embedding_provider_init_failed",
+                    "Embedding provider initialization failed",
+                    {
+                        "provider": provider_normalized,
+                        "model_name": params.get("embedding_model_name"),
+                        "error": str(exc),
+                    },
+                ) from exc
             return SemanticChunker(
                 embeddings=embeddings,
                 threshold=params.get("threshold"),

@@ -27,6 +27,7 @@ x-app-environment: &app-environment
   HF_HOME: /cache/huggingface
   TRANSFORMERS_CACHE: /cache/huggingface/transformers
   SENTENCE_TRANSFORMERS_HOME: /cache/sentence-transformers
+  PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
 
 x-app-depends-on: &app-depends-on
   - postgres
@@ -38,6 +39,7 @@ x-app-depends-on: &app-depends-on
 x-app-cache-volumes: &app-cache-volumes
   - hf_cache:/cache/huggingface
   - sentence_transformers_cache:/cache/sentence-transformers
+  - playwright_cache:/ms-playwright
 
 services:
   postgres:
@@ -90,6 +92,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    command:
+      - sh
+      - -c
+      - python -m playwright install chromium && uvicorn app.main:app --host 0.0.0.0 --port 8000
     depends_on: *app-depends-on
     environment: *app-environment
     volumes: *app-cache-volumes
@@ -98,7 +104,10 @@ services:
 
   worker:
     image: rag-api:dev
-    command: celery -A app.workers.celery_app.celery_app worker -l INFO
+    command:
+      - sh
+      - -c
+      - python -m playwright install chromium && celery -A app.workers.celery_app.celery_app worker -l INFO
     depends_on: *app-depends-on
     environment: *app-environment
     volumes: *app-cache-volumes
@@ -110,3 +119,4 @@ volumes:
   neo4j_data:
   hf_cache:
   sentence_transformers_cache:
+  playwright_cache:

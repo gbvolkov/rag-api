@@ -19,7 +19,7 @@ def test_semantic_split_maps_missing_nltk_lookup_error(monkeypatch):
         service._apply_split_strategy(
             source,
             split_strategy="semantic",
-            splitter_params={"embedding_provider": "mock"},
+            splitter_params={"embedding_provider": "openai"},
         )
 
     payload = exc.value.detail

@@ -2,14 +2,18 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.api_v1.deps import require_active_project
+from app.core.errors import api_error
 from app.db.session import get_session
 from app.schemas.document_set import (
     DocumentSetWithItems,
     LoadDocumentsFromUrlRequest,
+    LoadDocumentsFromUrlSubmitRequest,
+    LoadDocumentsFromUrlSubmitResponse,
     LoadDocumentsRequest,
 )
 from app.schemas.segment import CreateSegmentsFromDocumentSetRequest, SegmentSetWithItems
 from app.services.document_load_service import DocumentLoadService
+from app.services.index_service import IndexService
 from app.services.segment_service import SegmentService
 from app.services.serializers import (
     document_item_out,
@@ -58,6 +62,35 @@ async def load_documents_from_url(
         document_set=document_set_out(document_set, total_items=len(items)),
         items=[document_item_out(i) for i in items],
     )
+
+
+@router.post("/projects/{project_id}/load_documents/url/submit", response_model=LoadDocumentsFromUrlSubmitResponse)
+async def submit_load_documents_from_url(
+    project_id: str,
+    request: LoadDocumentsFromUrlSubmitRequest,
+    _project=Depends(require_active_project),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.workers.tasks import run_document_load_from_url
+
+    requested_params = dict(request.loader_params or {})
+    url = str(requested_params.get("url") or "").strip()
+    if not url:
+        raise api_error(400, "invalid_loader_params", "loader_params.url is required for URL loading")
+
+    svc = IndexService(session)
+    job = await svc.create_job(
+        project_id=project_id,
+        job_type="document_load_url",
+        payload={
+            "project_id": project_id,
+            "loader_type": request.loader_type,
+            "url": url,
+            "fetch_mode": requested_params.get("fetch_mode"),
+        },
+    )
+    run_document_load_from_url.delay(job.job_id, project_id, request.loader_type, requested_params)
+    return LoadDocumentsFromUrlSubmitResponse(mode="async", job_id=job.job_id, status="queued")
 
 
 @router.get("/projects/{project_id}/document_sets")

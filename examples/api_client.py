@@ -179,6 +179,21 @@ class ApiClient:
             },
         )
 
+    def submit_load_documents_from_url(
+        self,
+        project_id: str,
+        loader_type: str | None = None,
+        loader_params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/projects/{project_id}/load_documents/url/submit",
+            json={
+                "loader_type": loader_type,
+                "loader_params": loader_params or {},
+            },
+        )
+
     def list_document_sets(self, project_id: str) -> list[dict[str, Any]]:
         return self._request("GET", f"/projects/{project_id}/document_sets")
 
